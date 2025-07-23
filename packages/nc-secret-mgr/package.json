@@ -46,7 +46,7 @@
     "class-transformer": "0.3.1",
     "class-validator": "^0.14.1",
     "cross-env": "^7.0.3",
-    "mocha": "^10.8.2",
+    "mocha": "^11.0.1",
     "nodemon": "^3.0.3",
     "@yao-pkg/pkg": "^6.5.1",
     "eslint-config-prettier": "^8.10.0",
@@ -55,6 +55,6 @@
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-prettier": "^4.2.1",
     "prettier": "^2.8.8",
-    "@mapbox/node-pre-gyp": "^1.0.11"
+    "@mapbox/node-pre-gyp": "^2.0.0"
   }
 }
