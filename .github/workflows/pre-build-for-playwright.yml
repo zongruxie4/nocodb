@@ -26,6 +26,7 @@ jobs:
       - name: build frontend (nc-gui)
         working-directory: ./packages/nc-gui
         run: |
+          export NODE_OPTIONS="--max-old-space-size=8192"
           pnpm run build
         timeout-minutes: 20
       - name: Create build archive
