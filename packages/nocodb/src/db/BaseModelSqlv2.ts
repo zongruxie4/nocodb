@@ -2848,9 +2848,6 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
   }) {
     const { pks, chunkSize = 1000 } = args;
 
-    const linksAsLtar =
-      args.args?.linksAsLtar === true || args.args?.linksAsLtar === 'true';
-
     const data = [];
 
     const chunkedPks = chunkArray(pks, chunkSize);
@@ -5322,10 +5319,9 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
           (sampleVal && typeof sampleVal === 'object');
       }
 
-      const isLtarColumn = [
-        UITypes.LinkToAnotherRecord,
-        UITypes.Lookup,
-      ].includes(col.uidt) || isLinksAsLtar;
+      const isLtarColumn =
+        [UITypes.LinkToAnotherRecord, UITypes.Lookup].includes(col.uidt) ||
+        isLinksAsLtar;
       if (isLtarColumn) {
         if (col.uidt === UITypes.Lookup) {
           const nestedCol = await this.getNestedColumn(col);
