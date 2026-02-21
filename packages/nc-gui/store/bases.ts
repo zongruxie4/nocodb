@@ -19,6 +19,8 @@ export const useBases = defineStore('basesStore', () => {
 
   const baseRoles = ref<Record<string, any>>({})
 
+  const workspaceBasesMap = ref<Map<string, Map<string, NcProject>>>(new Map())
+
   const bases = ref<Map<string, NcProject>>(new Map())
 
   const basesList = computed<NcProject[]>(() =>
@@ -41,8 +43,6 @@ export const useBases = defineStore('basesStore', () => {
 
     return route.value.params.baseId as string | undefined
   })
-
-  const showProjectList = ref<boolean>(route.value.params.typeOrId === 'base' ? false : !route.value.params.baseId)
 
   const baseHomeSearchQuery = ref<string>('')
 
@@ -198,8 +198,6 @@ export const useBases = defineStore('basesStore', () => {
     if (!base) return false
 
     return tableStore.baseTables.get(baseId)!.length === 0
-
-    return false
   }
 
   function isProjectPopulated(baseId: string) {
@@ -404,35 +402,6 @@ export const useBases = defineStore('basesStore', () => {
     },
   )
 
-  /**
-   * Will have to show base home page sidebar if any base/table/view/script is active
-   */
-  watch(
-    [() => route.value.params.baseId, () => route.value.params.viewId, () => route.value.params.viewTitle],
-    ([newBaseId, newTableId, newViewId], [oldBaseId, oldTableId, oldViewId]) => {
-      const shouldShowProjectList = !(
-        (newBaseId && newBaseId !== oldBaseId) ||
-        newTableId !== oldTableId ||
-        newViewId !== oldViewId
-      )
-
-      if (showProjectList.value === shouldShowProjectList) return
-
-      showProjectList.value = shouldShowProjectList
-    },
-  )
-
-  watch([() => basesList.value.length, () => isProjectsLoaded.value], ([baseListLength, newIsProjectsLoaded]) => {
-    /**
-     * Use case:
-     * If project list is empty and showProjectList is false,
-     * then we have to show project list else it will stuck in loading state (blank sidebar state)
-     */
-    if (baseListLength || !newIsProjectsLoaded || showProjectList.value) return
-
-    showProjectList.value = true
-  })
-
   watch(activeProjectId, () => {
     ncLastVisitedBase().set(activeProjectId.value)
   })
@@ -491,10 +460,10 @@ export const useBases = defineStore('basesStore', () => {
     basesUser,
     clearBasesUser,
     isDataSourceLimitReached,
-    showProjectList,
     baseHomeSearchQuery,
     getBaseRoles,
     baseRoles,
+    workspaceBasesMap,
 
     // Base Teams
     isLoadingBaseTeams,
