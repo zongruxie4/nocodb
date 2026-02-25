@@ -1832,7 +1832,7 @@ export function useCanvasRender({
           ctx.fill()
         }
 
-        if (row?.rowMeta.isValidationFailed || row?.rowMeta.isRowOrderUpdated) {
+        if (row?.rowMeta.isValidationFailed || row?.rowMeta.isRowOrderUpdated || row?.rowMeta.isRlsHidden) {
           warningRow = { row, yOffset }
         }
 
@@ -2589,7 +2589,12 @@ export function useCanvasRender({
       ctx.lineTo(adjustedWidth + indent, yOffset + rowHeight.value)
       ctx.stroke()
 
-      if (row?.rowMeta.isValidationFailed || row?.rowMeta.isRowOrderUpdated || row?.rowMeta.isGroupChanged) {
+      if (
+        row?.rowMeta.isValidationFailed ||
+        row?.rowMeta.isRowOrderUpdated ||
+        row?.rowMeta.isGroupChanged ||
+        row?.rowMeta.isRlsHidden
+      ) {
         warningRow = { row, yOffset }
       }
 
