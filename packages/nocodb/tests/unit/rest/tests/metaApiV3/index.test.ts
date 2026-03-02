@@ -10,9 +10,14 @@ import workspaceUsersTest from './workspaceUsers.test';
 import scriptsTestV3 from './scripts.test';
 import tableVisibilityPermissionsTestV3 from './table-visibility-permissions.test';
 import timelineTestV3 from './timeline.test';
+import filtersTestV3 from './filters.test';
+import sortsTestV3 from './sorts.test';
+import apiTokensTestV3 from './apiTokens.test';
+import workspaceTestV3 from './workspace.test';
+import teamHierarchyTestV3 from './team-hierarchy.test';
 import { isEE } from '../../../utils/helpers';
 // import teamPermissionsTestV3 from './team-permissions.test';
-// import teamPermissionBehaviorTestV3 from './team-permission-behavior.test';
+import teamPermissionBehaviorTestV3 from './team-permission-behavior.test';
 // import teamsTestV3 from './teams.test';
 // import workspaceTeamsV3 from './workspace-teams.test';
 // import baseTeamsV3 from './base-teams.test';
@@ -25,6 +30,8 @@ export default runOnSet(2, function () {
   columnTestV3();
   if (isEE()) {
     uniqueConstraintTestV3();
+    teamHierarchyTestV3();
+    teamPermissionBehaviorTestV3();
   }
   errorHandlingMetaTestsV3();
   workspaceUsersTest();
@@ -32,7 +39,6 @@ export default runOnSet(2, function () {
   tableVisibilityPermissionsTestV3();
   timelineTestV3();
   // teamPermissionsTestV3();
-  // teamPermissionBehaviorTestV3();
   // teamsTestV3();
   // workspaceTeamsV3();
   // baseTeamsV3();
