@@ -91,7 +91,7 @@ const disableTooltipForNewSidebar = true
   }
 
   .nc-rail-item-label {
-    @apply select-none text-captionXs text-[9px] font-medium leading-tight tracking-tight opacity-85 hidden;
+    @apply select-none text-[10px] font-bold leading-tight tracking-tight hidden;
   }
 
   &:hover:not(.active):not(.disabled) {
@@ -116,9 +116,6 @@ const disableTooltipForNewSidebar = true
       opacity: 1;
     }
 
-    .nc-rail-item-label {
-      opacity: 1;
-    }
   }
 
   // Dropdown active state: hover bg only, no indicator or text color change
@@ -149,5 +146,17 @@ const disableTooltipForNewSidebar = true
       @apply h-[36px];
     }
   }
+}
+</style>
+
+<style lang="scss">
+.nc-rail-item:not(.active) .nc-rail-item-label,
+.nc-rail-item:not(.active) .nc-rail-item-icon {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+[theme='dark'] .nc-rail-item:not(.active) .nc-rail-item-label,
+[theme='dark'] .nc-rail-item:not(.active) .nc-rail-item-icon {
+  color: rgba(255, 255, 255, 0.95);
 }
 </style>
