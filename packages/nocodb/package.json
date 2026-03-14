@@ -20,14 +20,9 @@
   },
   "license": "Sustainable Use License",
   "scripts": {
-    "build": "pnpm run docker:build",
-    "build:obfuscate": "EE=true rspack --config rspack.config.js",
-    "build:cli:module": "EE=true rspack --config rspack.cli.config.js",
-    "obfuscate:build:publish": "pnpm run build:obfuscate && pnpm publish .",
     "registerIntegrations": "node build-utils/registerIntegrations.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "pnpm run watch:run",
-    "start:prod": "node docker/main",
     "lint": "eslint \"src/**/*.ts\" --fix",
     "test": "jest --runInBand --forceExit --passWithNoTests",
     "test:watch": "jest --watch",
@@ -37,7 +32,6 @@
     "watch:run": "cross-env NODE_ENV=development NC_DISABLE_TELE=true ENTRYPOINT=src/run/docker rspack --config rspack.dev.config.js",
     "watch:run:mysql": "cross-env NODE_ENV=development NC_DISABLE_TELE=true ENTRYPOINT=src/run/dockerRunMysql rspack --config rspack.dev.config.js",
     "watch:run:pg": "cross-env NODE_ENV=development NC_DISABLE_TELE=true ENTRYPOINT=src/run/dockerRunPG rspack --config rspack.dev.config.js",
-    "docker:build": "EE=\"true-xc-test\" rspack  --config docker/rspack.config.js",
     "mail": "email dev --dir src/services/mail/templates --port 8001"
   },
   "dependencies": {
