@@ -2694,6 +2694,8 @@
       "toolOutput": "Output",
       "toolError": "Error",
       "showMoreLines": "Show {count} more lines",
+      "showThinking": "Show thinking",
+      "hideThinking": "Hide thinking",
       "approveAllTools": "Approve All",
       "denyAllTools": "Deny All",
       "pendingApprovalCount": "{count} action requires approval | {count} actions require approval"
