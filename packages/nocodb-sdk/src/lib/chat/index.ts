@@ -44,7 +44,7 @@ export interface ChatSessionType {
   id?: string;
   title?: string;
   fk_workspace_id: string;
-  fk_base_id: string;
+  base_id: string;
   fk_user_id?: string;
   summary?: string;
   total_input_tokens?: number;
