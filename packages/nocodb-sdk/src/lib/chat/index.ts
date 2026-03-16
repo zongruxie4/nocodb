@@ -106,6 +106,7 @@ export interface ChatMessageType {
   model?: string;
   input_tokens?: number;
   output_tokens?: number;
+  bt_span_id?: string | null;
   created_at?: string;
 }
 

@@ -11,6 +11,7 @@ const up = async (knex: Knex) => {
 
   await knex.schema.alterTable(MetaTable.CHAT_MESSAGES, (table) => {
     table.string('base_id', 20);
+    table.string('bt_span_id', 100);
   });
 };
 
@@ -21,6 +22,7 @@ const down = async (knex: Knex) => {
 
   await knex.schema.alterTable(MetaTable.CHAT_MESSAGES, (table) => {
     table.dropColumn('base_id');
+    table.dropColumn('bt_span_id');
   });
 };
 

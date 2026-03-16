@@ -48,6 +48,8 @@ export const useChatStore = defineStore('chatStore', () => {
     _baseId?: string,
   ) => {}
 
+  const messageFeedback = async (_sessionId: string, _messageId: string, _score: 1 | 0) => {}
+
   const fetchSuggestions = async (_wsId: string, _type: string, _baseId?: string) => {}
 
   const cancelSending = async () => {}
@@ -82,6 +84,7 @@ export const useChatStore = defineStore('chatStore', () => {
     loadMessages,
     sendMessage,
     approveToolCalls,
+    messageFeedback,
     fetchSuggestions,
     cancelSending,
     initChatSocket,

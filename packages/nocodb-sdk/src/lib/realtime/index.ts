@@ -217,6 +217,8 @@ export interface ChatEventPayload extends BaseSocketPayload {
   messageId?: string;
   /** Final ordered content blocks — single source of truth for the persisted message. */
   parts?: ChatContentBlock[];
+  /** Braintrust span ID — used for thumbs up/down feedback submission. */
+  btSpanId?: string | null;
   /** Follow-up suggestions generated after the assistant response */
   followUps?: string[];
   // action: 'error'
