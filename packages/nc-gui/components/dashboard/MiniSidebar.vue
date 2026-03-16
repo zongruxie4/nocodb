@@ -37,7 +37,12 @@ const { setActiveCmdView } = useCommand()
 
 const { isChatWootEnabled } = useProvideChatwoot()
 
-const { isPanelExpanded: isChatPanelExpanded, hasWorkspaceContext: hasChatWorkspaceContext, hasBaseContext: hasChatBaseContext, toggleChatPanel } = useChatPanel()
+const {
+  isPanelExpanded: isChatPanelExpanded,
+  hasWorkspaceContext: hasChatWorkspaceContext,
+  hasBaseContext: hasChatBaseContext,
+  toggleChatPanel,
+} = useChatPanel()
 
 const { blockAiChat } = useEeConfig()
 

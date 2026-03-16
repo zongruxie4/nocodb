@@ -37,7 +37,13 @@ const { unreadCount } = toRefs(notificationStore)
 
 const isNotificationOpen = ref(false)
 
-const { isPanelExpanded: isChatPanelExpanded, isFullScreen: isChatFullScreen, hasWorkspaceContext: hasChatWorkspaceContext, hasBaseContext: hasChatBaseContext, toggleChatPanel } = useChatPanel()
+const {
+  isPanelExpanded: isChatPanelExpanded,
+  isFullScreen: isChatFullScreen,
+  hasWorkspaceContext: hasChatWorkspaceContext,
+  hasBaseContext: hasChatBaseContext,
+  toggleChatPanel,
+} = useChatPanel()
 
 const { blockAiChat, showEEFeatures } = useEeConfig()
 
