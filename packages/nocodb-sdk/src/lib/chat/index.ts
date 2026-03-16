@@ -5,6 +5,22 @@ export enum ChatMessageRole {
   TOOL = 'tool',
 }
 
+export enum ChatEventAction {
+  TOKEN = 'token',
+  TOOL_START = 'tool-start',
+  TOOL_CALL = 'tool-call',
+  TOOL_RESULT = 'tool-result',
+  MESSAGE_DONE = 'message-done',
+  MESSAGE_UPDATE = 'message-update',
+  ERROR = 'error',
+  SESSION_CREATE = 'session-create',
+  SESSION_UPDATE = 'session-update',
+  SESSION_DELETE = 'session-delete',
+  USER_MESSAGE = 'user-message',
+  AGENT_SWITCH = 'agent-switch',
+  FOLLOW_UPS = 'follow-ups',
+}
+
 export enum ChatToolCallStatus {
   PENDING = 'pending',
   RUNNING = 'running',
@@ -15,18 +31,13 @@ export enum ChatToolCallStatus {
   DENIED = 'denied',
 }
 
-export enum ChatStreamEventType {
-  TEXT_DELTA = 'text-delta',
-  TOOL_CALL_START = 'tool-call-start',
-  TOOL_CALL_DONE = 'tool-call-done',
-  TOOL_RESULT = 'tool-result',
-  MESSAGE_DONE = 'message-done',
-  ERROR = 'error',
-}
-
 export interface ChatSessionMetaType {
-  /** Tool categories loaded via load_tools during this session */
-  loadedCategories?: string[];
+  turnSummaries?: Array<{
+    agent: string;
+    summary: string;
+    completed: string[];
+    remaining: string[];
+  }>;
 }
 
 export interface ChatSessionType {
@@ -43,10 +54,8 @@ export interface ChatSessionType {
   updated_at?: string;
 }
 
-/**
- * Self-contained content block — single source of truth for assistant messages.
- * Mirrors Anthropic's content block format.
- */
+export type ChatToolVisibility = 'hidden' | 'action' | 'data' | 'ui';
+
 export type ChatContentBlock =
   | { type: 'text'; text: string }
   | {
@@ -57,15 +66,15 @@ export type ChatContentBlock =
       status: ChatToolCallStatus;
       output?: any;
       is_error?: boolean;
+      agent?: string;
+      visibility?: ChatToolVisibility;
     };
 
 export interface ChatMessageType {
   id?: string;
   fk_session_id: string;
   role: ChatMessageRole;
-  /** Text content — used for user messages. Assistant messages use `parts`. */
   content?: string | null;
-  /** Ordered content blocks — single source of truth for assistant messages. */
   parts?: ChatContentBlock[];
   model?: string;
   input_tokens?: number;
@@ -73,15 +82,15 @@ export interface ChatMessageType {
   created_at?: string;
 }
 
+export const NC_NEW_SESSION = 'NC_SESSION';
+
 export interface ChatSendMessageType {
   content: string;
   approvals?: Record<string, 'approved' | 'denied'>;
   base_id?: string;
+  title?: string;
 }
 
-export interface ChatToolDefinitionType {
-  name: string;
-  description: string;
-  parameters: Record<string, any>;
-  is_dangerous: boolean;
+export interface ChatSendMessageResponseType {
+  session?: ChatSessionType;
 }

@@ -110,6 +110,7 @@ const permissionScopes = {
     'chatSessionDelete',
     'chatMessageList',
     'chatMessageSend',
+    'chatSuggestionsGet',
 
     // Workspace user ops (internal, not exposed as CE API)
     'workspaceUserList',
@@ -314,6 +315,7 @@ const rolePermissions:
       chatSessionDelete: true,
       chatMessageList: true,
       chatMessageSend: true,
+      chatSuggestionsGet: true,
     },
   },
   [WorkspaceUserRoles.COMMENTER]: {
@@ -859,6 +861,7 @@ const permissionDescriptions: Record<string, string> = {
   chatSessionDelete: 'delete a chat session',
   chatMessageList: 'list chat messages',
   chatMessageSend: 'send a chat message',
+  chatSuggestionsGet: 'get chat suggestions',
 };
 
 // Human-readable descriptions for roles
