@@ -94,6 +94,8 @@ export const useEeConfig = createSharedComposable(() => {
 
   const blockColourField = computed(() => true)
 
+  const blockTeamHierarchy = computed(() => true)
+
   const blockTeamsManagement = computed(() => true)
 
   const blockAddNewTeamToWs = computed(() => true)
@@ -209,6 +211,8 @@ export const useEeConfig = createSharedComposable(() => {
   const showUpgradeToUseButtonVisibility = (..._args: any[]) => {}
 
   const showUpgradeToUseColourField = (..._args: any[]) => {}
+
+  const showUpgradeToUseTeamHierarchy = (..._args: any[]) => {}
 
   const showUpgradeToUseTeams = (..._args: any[]) => {}
 
@@ -336,6 +340,8 @@ export const useEeConfig = createSharedComposable(() => {
     showUpgradeToUseButtonVisibility,
     blockColourField,
     showUpgradeToUseColourField,
+    blockTeamHierarchy,
+    showUpgradeToUseTeamHierarchy,
     blockTeamsManagement,
     showUpgradeToUseTeams,
     blockAddNewTeamToWs,
