@@ -174,6 +174,10 @@ export const useEeConfig = createSharedComposable(() => {
 
   const showUpgradeToUseTableAndFieldPermissions = (..._args: any[]) => {}
 
+  const blockDocumentPermissions = computed(() => true)
+
+  const showUpgradeToUseDocumentPermissions = (..._args: any[]) => {}
+
   const showUpgradeToUsePrivateBases = (..._args: any[]) => {}
 
   const showUpgradeToAddMoreAttachmentsInCell = (..._args: any[]) => {}
@@ -307,6 +311,8 @@ export const useEeConfig = createSharedComposable(() => {
     showUpgradeToUseCellColoring,
     blockTableAndFieldPermissions,
     showUpgradeToUseTableAndFieldPermissions,
+    blockDocumentPermissions,
+    showUpgradeToUseDocumentPermissions,
     blockPrivateBases,
     showUpgradeToUsePrivateBases,
     showUserMayChargeAlert,
