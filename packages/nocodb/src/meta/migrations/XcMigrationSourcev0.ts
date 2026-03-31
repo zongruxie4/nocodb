@@ -41,6 +41,8 @@ import * as nc_202603110001_chat_session_base_id from './v0/nc_202603110001_chat
 import * as nc_202603170000_form_view_expires_at from './v0/nc_202603170000_form_view_expires_at';
 import * as nc_202603170001_workflow_draft_reminder from './v0/nc_202603170001_workflow_draft_reminder';
 import * as nc_202603090002_date_dependency from './v0/nc_202603090002_date_dependency';
+import * as nc_202603230000_subscription_last_paid_seat_count from './v0/nc_202603230000_subscription_last_paid_seat_count';
+import * as nc_202603301109_fine_grained_api_tokens from './v0/nc_202603301109_fine_grained_api_tokens';
 
 // Create a custom migration source class
 export default class XcMigrationSourcev0 {
@@ -93,6 +95,8 @@ export default class XcMigrationSourcev0 {
       'nc_202603170000_form_view_expires_at',
       'nc_202603170001_workflow_draft_reminder',
       'nc_202603090002_date_dependency',
+      'nc_202603230000_subscription_last_paid_seat_count',
+      'nc_202603301109_fine_grained_api_tokens',
     ]);
   }
 
@@ -188,6 +192,10 @@ export default class XcMigrationSourcev0 {
         return nc_202603170001_workflow_draft_reminder;
       case 'nc_202603090002_date_dependency':
         return nc_202603090002_date_dependency;
+      case 'nc_202603230000_subscription_last_paid_seat_count':
+        return nc_202603230000_subscription_last_paid_seat_count;
+      case 'nc_202603301109_fine_grained_api_tokens':
+        return nc_202603301109_fine_grained_api_tokens;
     }
   }
 }
