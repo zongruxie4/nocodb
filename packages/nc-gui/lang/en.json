@@ -791,7 +791,7 @@
       "Team": "Team",
       "Plus": "Plus",
       "Business": "Business",
-      "Self-hosted Business": "Business",
+      "Self-hosted Starter": "Starter",
       "Self-hosted Scale": "Scale",
       "Self-hosted Enterprise": "Enterprise"
     },
@@ -1413,6 +1413,8 @@
     "manageBilling": "Manage Billing",
     "syncFromStripe": "Sync licenses from Stripe",
     "selectPlan": "Select Plan",
+    "customPricing": "Custom",
+    "tailoredForYourOrg": "Tailored for your organization",
     "billedAnnually": "Billed annually",
     "userPerMonth": "user / month",
     "totalPerMonth": "total / month",
