@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { type AuditType, PlanLimitTypes } from 'nocodb-sdk'
 
-const { user } = useGlobal()
+const { user, appInfo } = useGlobal()
 
 const { primaryKey, consolidatedAudits, isAuditLoading, loadMoreAudits, resetAuditPages, hasMoreAudits } =
   useExpandedFormStoreOrThrow()
@@ -137,6 +137,9 @@ function isV0Audit(audit: AuditType) {
           <div class="font-bold text-center my-1 text-nc-content-gray-subtle2">See changes to this record</div>
           <div v-if="auditRetentionLimit" class="text-center text-nc-content-gray-subtle2">
             Your current plan provides <span class="font-bold">{{ auditRetentionLimit }}</span> of revision history.
+          </div>
+          <div v-else-if="isCeRetentionLimited" class="text-center text-nc-content-gray-subtle2">
+            Only the last <span class="font-bold">30 days</span> of revision history is available.
           </div>
         </div>
       </template>
