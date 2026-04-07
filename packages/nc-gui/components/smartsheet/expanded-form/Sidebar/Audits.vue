@@ -8,6 +8,16 @@ const { primaryKey, consolidatedAudits, isAuditLoading, loadMoreAudits, resetAud
 
 const { getPlanLimit } = useWorkspace()
 
+const { handleUpgradePlan, isPaymentEnabled } = useEeConfig()
+
+const isCeRetentionLimited = computed(() => !appInfo.value?.ee)
+
+function showAuditUpgradeModal() {
+  handleUpgradePlan({
+    limitOrFeature: PlanLimitTypes.LIMIT_AUDIT_RETENTION,
+  })
+}
+
 const auditRetentionLimit = computed(() => {
   const retention = getPlanLimit(PlanLimitTypes.LIMIT_AUDIT_RETENTION)
 
