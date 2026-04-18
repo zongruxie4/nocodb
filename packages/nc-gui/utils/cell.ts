@@ -147,9 +147,7 @@ export const getSelectTypeFieldOptionBgColor = ({
   }
 
   // Light mode: solid bg (default) or muted tint (opt-in)
-  return isMutedColorEnabled
-    ? getSelectOptionLightTint(color || '#e7e7e9')
-    : color || '#e7e7e9'
+  return isMutedColorEnabled ? getSelectOptionLightTint(color || '#e7e7e9') : color || '#e7e7e9'
 }
 
 export const getDarkModeCompatibleBgColor = ({ color, isDark, shade }: { color?: string; isDark: boolean; shade?: number }) => {
