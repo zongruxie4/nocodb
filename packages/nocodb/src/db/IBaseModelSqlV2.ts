@@ -350,6 +350,7 @@ export interface IBaseModelSqlV2 {
     apiVersion?: NcApiVersion;
     args?: any;
     extractOnlyPrimaries?: boolean;
+    deletedOnly?: boolean;
   }): Promise<any[]>;
 
   list(
