@@ -126,6 +126,7 @@ const permissionScopes = {
     'formViewGet',
     'baseGet',
     'tableGet',
+    'attachmentDownload',
     'dataList',
     'linkDataList',
     'bulkDataList',
@@ -252,6 +253,9 @@ const permissionScopes = {
     'hookTrigger',
 
     'userInvite',
+
+    // Migration
+    'migrateBase',
 
     // AI
     'aiUtils',
@@ -387,6 +391,8 @@ const rolePermissions:
       baseGet: true,
       //table
       tableGet: true,
+      // attachment
+      attachmentDownload: true,
       // data
       dataList: true,
       linkDataList: true,
@@ -556,6 +562,7 @@ const rolePermissions:
   [ProjectRoles.CREATOR]: {
     exclude: {
       baseDelete: true,
+      migrateBase: true,
     },
   },
   [ProjectRoles.OWNER]: {
@@ -845,6 +852,7 @@ const permissionDescriptions: Record<string, string> = {
   formViewGet: 'view forms',
   baseGet: 'view base details',
   tableGet: 'view table details',
+  attachmentDownload: 'download attachments',
   dataList: 'view data',
   linkDataList: 'view data',
   bulkDataList: 'view data',
@@ -955,6 +963,8 @@ const permissionDescriptions: Record<string, string> = {
   jobList: 'view list of jobs',
 
   hookTrigger: 'trigger a webhook',
+
+  migrateBase: 'migrate a base to another instance',
 
   mcpList: 'view list of MCP tokens',
   mcpCreate: 'create a new MCP token',

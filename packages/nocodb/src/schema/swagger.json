@@ -21067,6 +21067,33 @@
           "in": "query",
           "description": "Team ID",
           "required": false
+        },
+        {
+          "schema": {
+            "type": "string"
+          },
+          "name": "modelId",
+          "in": "query",
+          "description": "Model ID",
+          "required": false
+        },
+        {
+          "schema": {
+            "type": "string"
+          },
+          "name": "rowId",
+          "in": "query",
+          "description": "Row ID",
+          "required": false
+        },
+        {
+          "schema": {
+            "type": "string"
+          },
+          "name": "urlOrPath",
+          "in": "query",
+          "description": "URL or Path of the attachment",
+          "required": false
         }
       ]
     },
@@ -27170,9 +27197,9 @@
             "$ref": "#/components/schemas/Bool",
             "description": "Indicates if the base is a sandbox"
           },
-          "is_sandbox_master": {
+          "is_sandbox_production": {
             "$ref": "#/components/schemas/Bool",
-            "description": "Indicates if the base is a sandbox master"
+            "description": "Indicates if the base is a sandbox production base (has at least one sandbox derived from it)"
           }
         },
         "x-stoplight": {

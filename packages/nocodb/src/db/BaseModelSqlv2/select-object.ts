@@ -514,7 +514,7 @@ export const selectObject = (baseModel: IBaseModelSqlV2, logger: Logger) => {
           break;
         }
         case UITypes.LongText: {
-          if ((baseModel.dbDriver as any).isExternal) {
+          if (baseModel.dbDriver.isExternal) {
             const colPath = sanitize(
               `${alias || baseModel.tnPath}.${column.column_name}`,
             );

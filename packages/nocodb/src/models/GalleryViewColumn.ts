@@ -91,12 +91,14 @@ export default class GalleryViewColumn {
     // on new view column, delete any optimised single query cache
     {
       const view = await View.get(context, column.fk_view_id, false, ncMeta);
-      await View.clearSingleQueryCache(
-        context,
-        view.fk_model_id,
-        [view],
-        ncMeta,
-      );
+      if (view) {
+        await View.clearSingleQueryCache(
+          context,
+          view.fk_model_id,
+          [view],
+          ncMeta,
+        );
+      }
     }
 
     return this.get(context, id, ncMeta).then(async (viewColumn) => {
