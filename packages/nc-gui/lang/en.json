@@ -1351,6 +1351,9 @@
     "removeFromBookmarks": "Remove from Bookmarks",
     "bookmarkThisPage": "Bookmark this page",
     "removePageBookmark": "Remove page bookmark",
+    "openInNewTab": "Open in new tab",
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all",
     "newBookmark": "New Bookmark",
     "newFolder": "New folder",
     "deleteFolder": "Delete folder",
@@ -3198,6 +3201,7 @@
   "msg": {
     "bookmarkAdded": "Bookmark added",
     "bookmarkRemoved": "Bookmark removed",
+    "bookmarksDeleted": "{count} bookmarks deleted",
     "bookmarkUpdated": "Bookmark updated",
     "bookmarkGroupDeleted": "Group deleted. Bookmarks moved to Ungrouped.",
     "confirmDeleteBookmarkGroup": "Bookmarks in this group will be moved to Ungrouped. This cannot be undone.",
