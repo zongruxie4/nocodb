@@ -191,6 +191,10 @@ export interface ExecAndParseOptions {
   first?: boolean;
   bulkAggregate?: boolean;
   apiVersion?: NcApiVersion;
+  // Bypass the public-viewer email redaction in convertUserFormat. Used by
+  // write paths that need full emails to flow into webhook hooks; they apply
+  // the redaction themselves on the response copy after firing hooks.
+  skipPublicRedaction?: boolean;
 }
 
 /** Args stashed on DataLoader instances for relation queries (hm/mm/bt/oo). */
@@ -329,6 +333,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
       extractOrderColumn = false,
       ignoreRls = false,
       fk_display_value_column_id,
+      skipPublicRedaction = false,
     }: {
       ignoreView?: boolean;
       getHiddenColumn?: boolean;
@@ -338,6 +343,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
       extractOrderColumn?: boolean;
       ignoreRls?: boolean;
       fk_display_value_column_id?: string | null;
+      skipPublicRedaction?: boolean;
     } = {},
   ): Promise<any> {
     const qb = this.dbDriver(this.tnPath);
@@ -398,6 +404,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
         skipSubstitutingColumnIds:
           this.context.api_version === NcApiVersion.V3 &&
           query?.[QUERY_STRING_FIELD_ID_ON_RESULT] === 'true',
+        skipPublicRedaction,
       });
     } catch (e) {
       const isTransient = isTransientError(e);
@@ -411,6 +418,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
       logger.log(e);
       return this.readByPk(id, true, query, {
         apiVersion,
+        skipPublicRedaction,
       });
     }
 
@@ -3250,6 +3258,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
     disableOptimization?: boolean;
     view?: View;
     ignoreRls?: boolean;
+    skipPublicRedaction?: boolean;
   }): Promise<any> {
     return this.readByPk(
       params.idOrRecord,
@@ -3259,6 +3268,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
         ignoreView: params.ignoreView,
         getHiddenColumn: params.getHiddenColumn,
         ignoreRls: params.ignoreRls,
+        skipPublicRedaction: params.skipPublicRedaction,
       },
     );
   }
@@ -3582,6 +3592,10 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
           getHiddenColumn: true,
           source,
           ignoreRls: true,
+          // Skip public-viewer email redaction during this read — afterInsert
+          // fires the webhook with full emails, then redactPublicForResponse
+          // mutates `response` back to redacted before we return.
+          skipPublicRedaction: true,
         });
       }
 
@@ -5330,6 +5344,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
     req: NcRequest;
   }): Promise<void> {
     await this.handleHooks('after.insert', null, data, req);
+    await this.redactPublicForResponse(data);
     const id = this.extractPksValues(data);
     const filteredAuditData = removeBlankPropsAndMask(insertData || data, [
       'CreatedAt',
@@ -5372,6 +5387,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
     req: NcRequest,
   ): Promise<void> {
     await this.handleHooks('after.bulkInsert', null, data, req);
+    await this.redactPublicForResponse(data);
     let parentAuditId;
 
     // disable external source audit in cloud
@@ -5470,6 +5486,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
     }
 
     await this.handleHooks('after.delete', null, data, req);
+    await this.redactPublicForResponse(data);
   }
 
   public async afterBulkDelete(
@@ -5480,6 +5497,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
     rowEventType: AuditV1OperationTypes = AuditV1OperationTypes.DATA_DELETE,
   ): Promise<void> {
     await this.handleHooks('after.bulkDelete', null, data, req);
+    await this.redactPublicForResponse(data);
 
     // bulkAll chunks rows into 100-row batches and calls afterBulkDelete per
     // chunk. The first chunk creates the parent audit; later chunks reuse
@@ -5621,6 +5639,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
   ): Promise<void> {
     if (!isBulkAllOperation && Array.isArray(newData)) {
       await this.handleHooks('after.bulkUpdate', prevData, newData, req);
+      await this.redactPublicForResponse(prevData, newData);
     }
 
     if (!Array.isArray(newData)) return;
@@ -5822,6 +5841,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
     if (ignoreWebhook === undefined || ignoreWebhook === 'false') {
       await this.handleHooks('after.update', prevData, newData, req);
     }
+    await this.redactPublicForResponse(prevData, newData);
     await this.handleRichTextMentions(prevData, newData, req);
   }
 
@@ -5857,6 +5877,12 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
     newData: Record<string, any> | Record<string, any>[] | null,
     req: NcRequest,
   ): Promise<void> {
+    // Webhook destinations are server-side and configured by the workspace
+    // owner — they receive whatever the caller passes here. Public-viewer
+    // email redaction is applied at the API response boundary (in afterX
+    // methods, after this hook fires), not in the data layer, so write paths
+    // that opt in via `skipPublicRedaction` on their read deliver full emails
+    // to webhooks while the API response remains redacted.
     Noco.eventEmitter.emit(HANDLE_WEBHOOK, {
       context: { ...this.context, cache: false, cacheMap: undefined },
       hookName,
@@ -5867,6 +5893,22 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
       modelId: this.model.id,
       tnPath: this.tnPath,
     });
+  }
+
+  // Apply public-viewer email redaction to data destined for the API response,
+  // after webhook hooks have fired with full emails. Idempotent — redacting
+  // already-redacted data is a no-op. Variadic so callers can pass multiple
+  // payloads in one call (e.g. prevData + newData on updates).
+  protected async redactPublicForResponse(
+    ...payloads: any[]
+  ): Promise<void> {
+    if (!this.context?.is_public) return;
+    const userColumns = await this._getUserBearingColumns();
+    if (!userColumns.length) return;
+    for (const p of payloads) {
+      if (p == null) continue;
+      await this._applyPublicEmailRedaction(p, userColumns);
+    }
   }
 
   public async errorInsert(
@@ -7113,6 +7155,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
         data,
         dependencyColumns,
         options?.apiVersion,
+        { skipPublicRedaction: options?.skipPublicRedaction },
       );
     }
 
@@ -7350,16 +7393,19 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
     data: Record<string, any>[],
     dependencyColumns?: Column[],
     apiVersion?: NcApiVersion,
+    options?: { skipPublicRedaction?: boolean },
   ): Promise<Record<string, any>[]>;
   protected async convertUserFormat(
     data: Record<string, any>,
     dependencyColumns?: Column[],
     apiVersion?: NcApiVersion,
+    options?: { skipPublicRedaction?: boolean },
   ): Promise<Record<string, any>>;
   protected async convertUserFormat(
     data: Record<string, any>,
     dependencyColumns?: Column[],
     apiVersion?: NcApiVersion,
+    options?: { skipPublicRedaction?: boolean },
   ) {
     // user is stored as id within the database
     // convertUserFormat is used to convert the response in id to user object in API response
@@ -7420,9 +7466,10 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
 
     await PresignedUrl.signMetaIconImage(baseUsers);
 
+    let converted: Record<string, any> | Record<string, any>[];
     if (Array.isArray(data)) {
       const userMap = new Map(baseUsers.map((user) => [user.id, user]));
-      return Promise.all(
+      converted = await Promise.all(
         data.map((d) =>
           this._convertUserFormat(
             allUserColumns,
@@ -7434,13 +7481,22 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
         ),
       );
     } else {
-      return this._convertUserFormat(
+      converted = this._convertUserFormat(
         allUserColumns,
         baseUsers,
         data,
         apiVersion,
       );
     }
+
+    // Apply public-viewer redaction at the conversion boundary unless the
+    // caller opted out (e.g. the read feeds a webhook hook that needs full
+    // emails — the caller will redact again after firing the hook).
+    if (!options?.skipPublicRedaction) {
+      await this._applyPublicEmailRedaction(converted, allUserColumns);
+    }
+
+    return converted;
   }
 
   protected _convertUserFormat(
@@ -7492,15 +7548,6 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
                 : null;
             }
 
-            if (this.context?.is_public) {
-              return {
-                id,
-                display_name: extractDisplayNameFromEmail(email, display_name),
-                email: '',
-                meta: metaObj,
-              };
-            }
-
             return {
               id,
               email,
@@ -7517,6 +7564,103 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
       }
     } catch {}
     return d;
+  }
+
+  // Public viewers must not see real emails on User / CreatedBy / LastModifiedBy
+  // / Lookup-of-User values. We redact at the API response boundary instead of
+  // inside `_convertUserFormat` so write hooks (webhooks, audit) see full data —
+  // those destinations are server-side and configured by the workspace owner.
+  // Mutates `data` in-place. Walks by column metadata (no shape heuristics) and
+  // accepts data keyed by `col.id` (mid-pipeline) or `col.title` (post-alias).
+  protected async _applyPublicEmailRedaction<T>(
+    data: T,
+    userColumns: Column[],
+  ): Promise<T> {
+    if (!this.context?.is_public || !data || !userColumns?.length) return data;
+
+    const redactUser = (u: any) => {
+      if (!u || typeof u !== 'object' || Array.isArray(u)) return;
+      u.display_name = extractDisplayNameFromEmail(u.email, u.display_name);
+      u.email = '';
+    };
+
+    const redactColumnValue = (value: any) => {
+      if (value == null) return;
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (Array.isArray(item)) {
+            for (const inner of item) redactUser(inner);
+          } else {
+            redactUser(item);
+          }
+        }
+        return;
+      }
+      redactUser(value);
+    };
+
+    const redactRow = (row: any) => {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) return;
+      for (const col of userColumns) {
+        if (col.id && row[col.id] !== undefined) {
+          redactColumnValue(row[col.id]);
+        } else if (col.title && row[col.title] !== undefined) {
+          redactColumnValue(row[col.title]);
+        }
+      }
+    };
+
+    if (Array.isArray(data)) {
+      for (const row of data) redactRow(row);
+    } else {
+      redactRow(data);
+    }
+
+    return data;
+  }
+
+  // Resolve the User / CreatedBy / LastModifiedBy / Lookup-of-User columns
+  // we care about for `_applyPublicEmailRedaction`. Exposed as a helper so
+  // afterInsert/afterUpdate can resolve once and reuse.
+  protected async _getUserBearingColumns(): Promise<Column[]> {
+    const columns = await this.model.getColumns(this.context);
+    const directUserColumns: Column[] = [];
+    const lookupColumns: Column[] = [];
+
+    for (const col of columns) {
+      if (col.uidt === UITypes.Lookup) {
+        lookupColumns.push(col);
+      } else if (
+        [UITypes.User, UITypes.CreatedBy, UITypes.LastModifiedBy].includes(
+          col.uidt,
+        )
+      ) {
+        directUserColumns.push(col);
+      }
+    }
+
+    const lookupUserColumns = lookupColumns.length
+      ? (
+          await Promise.all(
+            lookupColumns.map(async (col) => {
+              try {
+                const nestedCol = await this.getNestedColumn(col);
+                return [
+                  UITypes.User,
+                  UITypes.CreatedBy,
+                  UITypes.LastModifiedBy,
+                ].includes(nestedCol?.uidt as UITypes)
+                  ? col
+                  : null;
+              } catch {
+                return null;
+              }
+            }),
+          )
+        ).filter(Boolean)
+      : [];
+
+    return [...directUserColumns, ...lookupUserColumns];
   }
 
   protected async _convertAttachmentType(
