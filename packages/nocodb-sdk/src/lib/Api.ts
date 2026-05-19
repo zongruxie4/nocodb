@@ -2272,8 +2272,9 @@ export interface FieldOptionsLinkToAnotherRecordV3Type {
    * Type of relationship.
    *
    * Supported options are listed below
+   * - `om` one-to-many
+   * - `mo` many-to-one
    * - `mm` many-to-many
-   * - `hm` has-many
    * - `oo` one-to-one
    */
   relation_type: string;
@@ -2286,8 +2287,9 @@ export interface FieldOptionsLinksV3Type {
    * Type of relationship.
    *
    * Supported options are listed below
+   * - `om` one-to-many
+   * - `mo` many-to-one
    * - `mm` many-to-many
-   * - `hm` has-many
    * - `oo` one-to-one
    */
   relation_type: string;
@@ -2412,6 +2414,8 @@ export interface FieldOptionsRollupV3Type {
     | 'countDistinct'
     | 'sumDistinct'
     | 'avgDistinct';
+  /** Error message when dependent field is deleted */
+  error?: string;
 }
 
 export interface FieldOptionsLookupV3Type {
@@ -2419,6 +2423,8 @@ export interface FieldOptionsLookupV3Type {
   related_field_id: string;
   /** Lookup field ID in the linked table. */
   related_table_lookup_field_id: string;
+  /** Error message when dependent field is deleted */
+  error?: string;
 }
 
 export interface FieldOptionsUserV3Type {
@@ -2847,7 +2853,7 @@ export interface FieldBaseV3Type {
   /** Unique identifier for the field. */
   id?: string;
   /** Title of the field. */
-  title: string;
+  title?: string;
   /** Field data type. */
   type?:
     | 'SingleLineText'
@@ -3912,6 +3918,33 @@ export interface BaseV3Type {
   }[];
 }
 
+export interface DataUpsertResponseV3Type {
+  records?: DataUpsertRecordResponseV3Type[];
+}
+
+export interface DataUpsertRecordResponseV3Type {
+  /** Primary key value */
+  id?: string | number;
+  /** Composite PK values (when table has multi-column PK) */
+  id_fields?: object;
+  /** Full record fields after upsert */
+  fields?: object;
+  /** Whether this record was inserted or updated */
+  status?: 'inserted' | 'updated';
+}
+
+export interface DataUpsertRequestV3Type {
+  /** Field titles or IDs to match on (max 3). If a matching record exists it is updated; otherwise a new record is created. When multiple records match the same combination, the request is rejected. */
+  fieldsToMergeOn: string[];
+  /** Records to upsert — single object or array */
+  records: DataUpsertRecordRequestV3Type | DataUpsertRecordRequestV3Type[];
+}
+
+export interface DataUpsertRecordRequestV3Type {
+  /** Field title → value map */
+  fields: object;
+}
+
 /**
  * Model for API Token
  */
@@ -4481,7 +4514,8 @@ export interface ColumnType {
     | 'Order'
     | 'Meta'
     | 'Colour'
-    | 'UUID';
+    | 'UUID'
+    | 'Deleted';
   /** Is Unsigned? */
   un?: BoolType;
   /** Is unique? */
@@ -4995,6 +5029,11 @@ export interface FormColumnType {
    * @example 1
    */
   order?: number;
+  /**
+   * Grid layout row grouping id. Columns sharing a row_id render on the same horizontal row (equal width). null means the field is solo / not grouped.
+   * @example fr_12ab34cd
+   */
+  row_id?: string | null;
   /** Is this form column required in submission? */
   required?: BoolType;
   /** Is this column shown in Form? */
@@ -5022,6 +5061,8 @@ export interface FormColumnReqType {
   meta?: MetaType;
   /** The order among all the columns in the form */
   order?: number;
+  /** Grid layout row grouping id. Columns sharing a row_id render on the same horizontal row (equal width). null means the field is solo / not grouped. */
+  row_id?: string | null;
   /** Is this form column required in submission? */
   required?: BoolType;
   /** Is this column shown in Form? */
@@ -5890,6 +5931,7 @@ export interface LinkToAnotherRecordType {
   fk_related_source_id?: string;
   fk_mm_source_id?: string;
   version?: number;
+  fk_display_value_column_id?: string | null;
 }
 
 /**
@@ -5909,6 +5951,8 @@ export interface LookupType {
    * @example 1
    */
   order?: number;
+  /** Error Message */
+  error?: string;
 }
 
 /**
@@ -6122,6 +6166,7 @@ export interface NormalColumnRequestType {
     | 'LastModifiedBy'
     | 'AI'
     | 'Order'
+    | 'Deleted'
     | 'Meta'
     | 'Colour'
     | 'UUID';
@@ -6382,8 +6427,8 @@ export interface BaseType {
   }[];
   /** Indicates if the base is a sandbox */
   is_sandbox?: BoolType;
-  /** Indicates if the base is a sandbox master */
-  is_sandbox_master?: BoolType;
+  /** Indicates if the base is a sandbox production base (has at least one sandbox derived from it) */
+  is_sandbox_production?: BoolType;
 }
 
 /**
@@ -6537,6 +6582,8 @@ export interface RollupType {
     | 'countDistinct'
     | 'sumDistinct'
     | 'avgDistinct';
+  /** Error Message */
+  error?: string;
 }
 
 /**
@@ -6796,6 +6843,10 @@ export interface TableType {
   type?: string;
   /** Is this table synced? */
   synced?: BoolType;
+  /** Is record trash disabled for this table? */
+  trash_disabled?: BoolType;
+  /** Custom trash retention period in days. null = use default. */
+  trash_retention_days?: number | null;
 }
 
 /**
@@ -6994,6 +7045,11 @@ export interface ViewCreateReqType {
    * @example This is a grid view.
    */
   description?: TextOrNullType;
+  /**
+   * Lock type of View. Applied as the initial mode on create.
+   * @example collaborative
+   */
+  lock_type?: 'collaborative' | 'locked' | 'personal';
 }
 
 /**
@@ -7172,6 +7228,12 @@ export type NestedListCopyPasteOrDeleteAllReqType = {
   rowId: string;
   columnId: string;
   fk_related_model_id: string;
+}[];
+
+export type NestedBulkLinkByDisplayValueReqType = {
+  columnId: string;
+  rowId: string;
+  displayValues: string[];
 }[];
 
 /**
@@ -7678,6 +7740,61 @@ export interface WorkspaceUserListType {
 export interface IntegrationListType {
   /** List of Integration Models */
   list: IntegrationType[];
+  /** Pagination Info */
+  pageInfo: PaginatedType;
+}
+
+/**
+ * Model for Base Trash Entry
+ */
+export interface BaseTrashType {
+  /** Unique Trash Entry ID */
+  id?: IdType;
+  /** Workspace ID */
+  fk_workspace_id?: IdType;
+  /** Base ID */
+  base_id?: IdType;
+  /** Type of the trashed resource */
+  resource_type?:
+    | 'table'
+    | 'view'
+    | 'field'
+    | 'dashboard'
+    | 'widget'
+    | 'script'
+    | 'workflow'
+    | 'extension'
+    | 'record'
+    | 'hook';
+  /** ID of the trashed resource */
+  resource_id?: IdType;
+  /** Type of the parent entity */
+  parent_type?: string;
+  /** ID of the parent entity */
+  parent_id?: IdType;
+  /** Display name of the trashed resource */
+  name?: string;
+  /** Display name of the parent entity */
+  parent_name?: string;
+  /** ID of the user who deleted */
+  deleted_by?: IdType;
+  /**
+   * Timestamp of deletion
+   * @format date-time
+   */
+  deleted_at?: string;
+  /** JSON string tracking cascade effects */
+  related_items?: string;
+  /** Resource-specific metadata for UI rendering (e.g. view type, table icon, field uidt) */
+  meta?: object;
+}
+
+/**
+ * Model for Base Trash List
+ */
+export interface BaseTrashListType {
+  /** List of Base Trash Entries */
+  list: BaseTrashType[];
   /** Pagination Info */
   pageInfo: PaginatedType;
 }
@@ -17687,54 +17804,6 @@ export class Api<
   };
   integration = {
     /**
-     * @description List integrations
-     *
-     * @tags Integration
-     * @name List
-     * @summary List integrations
-     * @request GET:/api/v2/meta/integrations
-     * @response `200` `IntegrationListType` OK
-     */
-    list: (
-      query?: {
-        /** Integration Type */
-        type?: IntegrationsType;
-        includeDatabaseInfo?: boolean;
-        limit?: number;
-        offset?: number;
-        baseId?: string;
-        query?: string;
-      },
-      params: RequestParams = {}
-    ) =>
-      this.request<IntegrationListType, any>({
-        path: `/api/v2/meta/integrations`,
-        method: 'GET',
-        query: query,
-        format: 'json',
-        ...params,
-      }),
-
-    /**
-     * @description Create integration
-     *
-     * @tags Integration
-     * @name Create
-     * @summary Create integration
-     * @request POST:/api/v2/meta/integrations
-     * @response `200` `IntegrationType` OK
-     */
-    create: (data: IntegrationReqType, params: RequestParams = {}) =>
-      this.request<IntegrationType, any>({
-        path: `/api/v2/meta/integrations`,
-        method: 'POST',
-        body: data,
-        type: ContentType.Json,
-        format: 'json',
-        ...params,
-      }),
-
-    /**
      * @description Read integration
      *
      * @tags Integration
@@ -17851,12 +17920,12 @@ export class Api<
      * @description List integrations
      *
      * @tags Integration
-     * @name WorkspaceList
+     * @name List
      * @summary List integrations
      * @request GET:/api/v2/meta/workspaces/{workspaceId}/integrations
      * @response `200` `IntegrationListType` OK
      */
-    workspaceList: (
+    list: (
       workspaceId: string,
       query?: {
         /** Integration Type */
@@ -17881,12 +17950,12 @@ export class Api<
      * @description Create integration
      *
      * @tags Integration
-     * @name WorkspaceCreate
+     * @name Create
      * @summary Create integration
      * @request POST:/api/v2/meta/workspaces/{workspaceId}/integrations
      * @response `200` `IntegrationType` OK
      */
-    workspaceCreate: (
+    create: (
       workspaceId: string,
       data: IntegrationReqType,
       params: RequestParams = {}
@@ -18075,6 +18144,12 @@ export class Api<
         dashboardId?: string;
         /** Entity ID */
         id?: string;
+        /** Model ID */
+        modelId?: string;
+        /** Row ID */
+        rowId?: string;
+        /** URL or Path of the attachment */
+        urlOrPath?: string;
       },
       data: Record<string, any>,
       params: RequestParams = {}
@@ -18170,6 +18245,12 @@ export class Api<
         dashboardId?: string;
         /** Entity ID */
         id?: string;
+        /** Model ID */
+        modelId?: string;
+        /** Row ID */
+        rowId?: string;
+        /** URL or Path of the attachment */
+        urlOrPath?: string;
       },
       params: RequestParams = {}
     ) =>
