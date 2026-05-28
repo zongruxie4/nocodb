@@ -20,6 +20,7 @@ import type {
   ColumnType,
   NcApiVersion,
   NormalColumnRequestType,
+  OperationSource,
   TableReqType,
   TableType,
   UserType,
@@ -27,7 +28,6 @@ import type {
 import type { MetaService } from '~/meta/meta.service';
 import type { LinkToAnotherRecordColumn, User } from '~/models';
 import type { NcRequest } from '~/interface/config';
-import type { OperationSource } from '~/helpers/columnHelpers';
 import { NcContext } from '~/interface/config';
 import { ColumnsService } from '~/services/columns.service';
 import { LinkPlaceholderService } from '~/services/link-placeholder.service';
@@ -336,7 +336,11 @@ export class TablesService {
     try {
       table = await Model.getByIdOrName(context, { id: param.tableId }, ncMeta);
 
-      if (table?.synced && !param.forceDeleteSyncs) {
+      if (!table) {
+        NcError.get(context).tableNotFound(param.tableId);
+      }
+
+      if (table.synced && !param.forceDeleteSyncs) {
         NcError.get(context).invalidRequestBody(
           'Synced tables cannot be deleted',
         );
