@@ -848,6 +848,7 @@ export interface WidgetUpdateReqV3Type {
     | WidgetOptionsDonutChartV3Type
     | WidgetOptionsBarChartV3Type
     | WidgetOptionsLineChartV3Type
+    | WidgetOptionsScatterV3Type
     | WidgetOptionsTextV3Type
     | WidgetOptionsIframeV3Type;
   /** Display order of the widget. */
@@ -886,6 +887,7 @@ export interface WidgetCreateReqV3Type {
     | WidgetOptionsDonutChartV3Type
     | WidgetOptionsBarChartV3Type
     | WidgetOptionsLineChartV3Type
+    | WidgetOptionsScatterV3Type
     | WidgetOptionsTextV3Type
     | WidgetOptionsIframeV3Type;
   /** Position and size of the widget on the dashboard grid. */
@@ -947,6 +949,7 @@ export interface WidgetReadV3Type {
     | WidgetOptionsDonutChartV3Type
     | WidgetOptionsBarChartV3Type
     | WidgetOptionsLineChartV3Type
+    | WidgetOptionsScatterV3Type
     | WidgetOptionsTextV3Type
     | WidgetOptionsIframeV3Type;
   /** Display order of the widget. */
@@ -1023,6 +1026,46 @@ export interface WidgetOptionsTextV3Type {
 }
 
 /**
+ * Options for a scatter plot widget (type=chart, chart_type=scatter). Same data structure as bar chart.
+ */
+export interface WidgetOptionsScatterV3Type {
+  chart_type: 'scatter';
+  data_source?: 'table' | 'view' | 'filter';
+  data?: {
+    x_axis?: {
+      field_id: string;
+      sort_by?: 'x_axis' | 'y_axis';
+      order_by?: 'default' | 'asc' | 'desc';
+      include_empty_records?: boolean;
+      include_others?: boolean;
+      category_limit?: number;
+    };
+    y_axis?: {
+      start_at_zero?: boolean;
+      fields?: {
+        field_id: string;
+        aggregation: string;
+      }[];
+      group_by?: string | null;
+    };
+  };
+  appearance?: {
+    size?: 'small' | 'medium' | 'large';
+    show_count_in_legend?: boolean;
+    show_value_in_chart?: boolean;
+    legend_position?: 'top' | 'right' | 'bottom' | 'left' | 'none';
+    color_schema?:
+      | 'default'
+      | 'classic'
+      | 'vibrant'
+      | 'pastel'
+      | 'earth'
+      | 'monoBlue'
+      | 'custom';
+  };
+}
+
+/**
  * Options for a line chart widget (type=chart, chart_type=line). Same data structure as bar chart with additional line-specific appearance options.
  */
 export interface WidgetOptionsLineChartV3Type {
@@ -1055,7 +1098,14 @@ export interface WidgetOptionsLineChartV3Type {
     show_count_in_legend?: boolean;
     show_value_in_chart?: boolean;
     legend_position?: 'top' | 'right' | 'bottom' | 'left' | 'none';
-    color_schema?: 'default' | 'custom';
+    color_schema?:
+      | 'default'
+      | 'classic'
+      | 'vibrant'
+      | 'pastel'
+      | 'earth'
+      | 'monoBlue'
+      | 'custom';
   };
 }
 
@@ -1095,7 +1145,14 @@ export interface WidgetOptionsBarChartV3Type {
     show_count_in_legend?: boolean;
     show_value_in_chart?: boolean;
     legend_position?: 'top' | 'right' | 'bottom' | 'left' | 'none';
-    color_schema?: 'default' | 'custom';
+    color_schema?:
+      | 'default'
+      | 'classic'
+      | 'vibrant'
+      | 'pastel'
+      | 'earth'
+      | 'monoBlue'
+      | 'custom';
   };
 }
 
@@ -1124,7 +1181,14 @@ export interface WidgetOptionsDonutChartV3Type {
     show_count_in_legend?: boolean;
     show_percentage_on_chart?: boolean;
     legend_position?: 'top' | 'right' | 'bottom' | 'left' | 'none';
-    color_schema?: 'default' | 'custom';
+    color_schema?:
+      | 'default'
+      | 'classic'
+      | 'vibrant'
+      | 'pastel'
+      | 'earth'
+      | 'monoBlue'
+      | 'custom';
     custom_color_schema?: {
       color?: string;
       label?: string;
@@ -1162,7 +1226,14 @@ export interface WidgetOptionsPieChartV3Type {
     show_count_in_legend?: boolean;
     show_percentage_on_chart?: boolean;
     legend_position?: 'top' | 'right' | 'bottom' | 'left' | 'none';
-    color_schema?: 'default' | 'custom';
+    color_schema?:
+      | 'default'
+      | 'classic'
+      | 'vibrant'
+      | 'pastel'
+      | 'earth'
+      | 'monoBlue'
+      | 'custom';
     custom_color_schema?: {
       color?: string;
       label?: string;
@@ -2416,6 +2487,15 @@ export interface FieldOptionsRollupV3Type {
     | 'avgDistinct';
   /** Error message when dependent field is deleted */
   error?: string;
+  /** Thousand/decimal separator style for numeric rollups. `locale` uses the runtime locale, `none_period` / `none_comma` disable thousand grouping. */
+  separator?:
+    | 'locale'
+    | 'none_period'
+    | 'none_comma'
+    | 'comma_period'
+    | 'period_comma'
+    | 'space_period'
+    | 'space_comma';
 }
 
 export interface FieldOptionsLookupV3Type {
@@ -2783,11 +2863,27 @@ export interface FieldOptionsDecimalV3Type {
    * @max 5
    */
   precision?: number;
+  /** Thousand/decimal separator style. `locale` uses the runtime locale, `none_period` / `none_comma` disable thousand grouping. */
+  separator?:
+    | 'locale'
+    | 'none_period'
+    | 'none_comma'
+    | 'comma_period'
+    | 'period_comma'
+    | 'space_period'
+    | 'space_comma';
 }
 
 export interface FieldOptionsNumberV3Type {
-  /** Show thousand separator on the UI. */
-  locale_string?: boolean;
+  /** Thousand/decimal separator style. `locale` uses the runtime locale, `none_period` / `none_comma` disable thousand grouping. */
+  separator?:
+    | 'locale'
+    | 'none_period'
+    | 'none_comma'
+    | 'comma_period'
+    | 'period_comma'
+    | 'space_period'
+    | 'space_comma';
 }
 
 export interface FieldOptionsEmailV3Type {
@@ -2988,6 +3084,42 @@ export type ViewV3Type = {
         row_coloring?: ViewRowColourV3Type;
       }
     | {
+        type?: 'timeline';
+        /** Timeline view configuration. A timeline may have multiple date ranges (e.g. "planned" vs "actual"); each range has a required start field and an optional end field. */
+        options: ViewOptionsTimelineV3Type;
+        /** List of sorts to be applied to the view. */
+        sorts?: SortCreateV3Type[];
+        filters?: FilterCreateUpdateV3Type;
+        /**
+         * List of fields to be displayed in the view.
+         *
+         * - If not specified, all fields are displayed by default.
+         * - If an empty array is provided, only the display value field will be shown.
+         * - In case of partial list, fields not included in the list will be excluded from the view.
+         */
+        fields?: ViewFieldsV3Type;
+        /** Row colour configuration for the the view. */
+        row_coloring?: ViewRowColourV3Type;
+      }
+    | {
+        type?: 'gantt';
+        /** Gantt view configuration. Bundles the per-view DateDependency rule with presentation settings stored on the view's meta JSON. */
+        options?: ViewOptionsGanttV3Type;
+        /** List of sorts to be applied to the view. */
+        sorts?: SortCreateV3Type[];
+        filters?: FilterCreateUpdateV3Type;
+        /**
+         * List of fields to be displayed in the view.
+         *
+         * - If not specified, all fields are displayed by default.
+         * - If an empty array is provided, only the display value field will be shown.
+         * - In case of partial list, fields not included in the list will be excluded from the view.
+         */
+        fields?: ViewFieldsV3Type;
+        /** Row colour configuration for the the view. */
+        row_coloring?: ViewRowColourV3Type;
+      }
+    | {
         type?: 'map';
         options?: ViewOptionsMapV3Type;
         /** List of sorts to be applied to the view. */
@@ -3058,6 +3190,40 @@ export type ViewUpdateV3Type = ViewBaseInUpdateV3Type &
       }
     | {
         options?: ViewOptionsCalendarV3Type;
+        /** List of sorts to be applied to the view. */
+        sorts?: SortCreateV3Type[];
+        filters?: FilterCreateUpdateV3Type;
+        /**
+         * List of fields to be displayed in the view.
+         *
+         * - If not specified, all fields are displayed by default.
+         * - If an empty array is provided, only the display value field will be shown.
+         * - In case of partial list, fields not included in the list will be excluded from the view.
+         */
+        fields?: ViewFieldsV3Type;
+        /** Row colour configuration for the the view. */
+        row_coloring?: ViewRowColourV3Type;
+      }
+    | {
+        /** Timeline view configuration. A timeline may have multiple date ranges (e.g. "planned" vs "actual"); each range has a required start field and an optional end field. */
+        options?: ViewOptionsTimelineV3Type;
+        /** List of sorts to be applied to the view. */
+        sorts?: SortCreateV3Type[];
+        filters?: FilterCreateUpdateV3Type;
+        /**
+         * List of fields to be displayed in the view.
+         *
+         * - If not specified, all fields are displayed by default.
+         * - If an empty array is provided, only the display value field will be shown.
+         * - In case of partial list, fields not included in the list will be excluded from the view.
+         */
+        fields?: ViewFieldsV3Type;
+        /** Row colour configuration for the the view. */
+        row_coloring?: ViewRowColourV3Type;
+      }
+    | {
+        /** Gantt view configuration. Bundles the per-view DateDependency rule with presentation settings stored on the view's meta JSON. */
+        options?: ViewOptionsGanttV3Type;
         /** List of sorts to be applied to the view. */
         sorts?: SortCreateV3Type[];
         filters?: FilterCreateUpdateV3Type;
@@ -3172,6 +3338,42 @@ export type ViewCreateV3Type = ViewBaseV3Type &
         row_coloring?: ViewRowColourV3Type;
       }
     | {
+        type?: 'timeline';
+        /** Timeline view configuration on create — same shape as ViewOptionsTimeline but requires date_ranges. Update (PATCH) uses the base schema so partial updates are allowed. */
+        options: ViewOptionsTimelineCreateV3Type;
+        /** List of sorts to be applied to the view. */
+        sorts?: SortCreateV3Type[];
+        filters?: FilterCreateUpdateV3Type;
+        /**
+         * List of fields to be displayed in the view.
+         *
+         * - If not specified, all fields are displayed by default.
+         * - If an empty array is provided, only the display value field will be shown.
+         * - In case of partial list, fields not included in the list will be excluded from the view.
+         */
+        fields?: ViewFieldsV3Type;
+        /** Row colour configuration for the the view. */
+        row_coloring?: ViewRowColourV3Type;
+      }
+    | {
+        type?: 'gantt';
+        /** Gantt view configuration on create — same shape as ViewOptionsGantt but requires date_dependency. Update (PATCH) uses the base schema so partial updates are allowed. */
+        options: ViewOptionsGanttCreateV3Type;
+        /** List of sorts to be applied to the view. */
+        sorts?: SortCreateV3Type[];
+        filters?: FilterCreateUpdateV3Type;
+        /**
+         * List of fields to be displayed in the view.
+         *
+         * - If not specified, all fields are displayed by default.
+         * - If an empty array is provided, only the display value field will be shown.
+         * - In case of partial list, fields not included in the list will be excluded from the view.
+         */
+        fields?: ViewFieldsV3Type;
+        /** Row colour configuration for the the view. */
+        row_coloring?: ViewRowColourV3Type;
+      }
+    | {
         type?: 'map';
         options?: ViewOptionsMapV3Type;
         /** List of sorts to be applied to the view. */
@@ -3255,6 +3457,71 @@ export interface ViewOptionsMapV3Type {
 export interface ViewOptionsGalleryV3Type {
   /** Attachment field ID to be used as cover image in gallery view. Is optional, if not provided, the first attachment field will be used. */
   cover_field_id?: string;
+}
+
+/**
+ * Date dependency rule for a gantt view. Top-level properties are all optional; supplying a child object (`dates`, `dependency`) commits to providing every property inside it.
+ */
+export interface DateDependencyV3Type {
+  /** Date column pair. Atomic — supply both or omit the block entirely. */
+  dates?: {
+    /** Field ID of the start date column. */
+    start_field_id: string;
+    /** Field ID of the end date column. */
+    end_field_id: string;
+  };
+  /** Optional standalone duration field; independent of the `dates` block. */
+  duration_field_id?: string | null;
+  /** Predecessor/successor link configuration. Atomic — supply all five properties or omit the block entirely. */
+  dependency?: {
+    /** Link-to-another-record field that connects predecessor/successor records. */
+    linkrow_field_id: string;
+    linkrow_role: 'predecessors' | 'successors';
+    connection_type:
+      | 'end-to-start'
+      | 'end-to-end'
+      | 'start-to-end'
+      | 'start-to-start';
+    buffer_type: 'flexible' | 'fixed' | 'none';
+    /**
+     * Buffer in days. Meaningful when `buffer_type` is `fixed`; pass 0 when buffer_type is `flexible` or `none`.
+     * @min 0
+     */
+    buffer_days: number;
+  };
+  include_weekends?: boolean;
+  /** Soft-disable the rule without deleting it. */
+  is_active?: boolean;
+}
+
+/**
+ * Gantt view configuration on create — same shape as ViewOptionsGantt but requires date_dependency. Update (PATCH) uses the base schema so partial updates are allowed.
+ */
+export type ViewOptionsGanttCreateV3Type = ViewOptionsGanttV3Type;
+
+/**
+ * Gantt view configuration. Bundles the per-view DateDependency rule with presentation settings stored on the view's meta JSON.
+ */
+export interface ViewOptionsGanttV3Type {
+  /** The view-owned date dependency rule. When null, the gantt falls back to the table-level default rule (if any). PATCH replaces the entire object — no partial updates. */
+  date_dependency?: DateDependencyV3Type | null;
+}
+
+/**
+ * Timeline view configuration on create — same shape as ViewOptionsTimeline but requires date_ranges. Update (PATCH) uses the base schema so partial updates are allowed.
+ */
+export type ViewOptionsTimelineCreateV3Type = ViewOptionsTimelineV3Type;
+
+/**
+ * Timeline view configuration. A timeline may have multiple date ranges (e.g. "planned" vs "actual"); each range has a required start field and an optional end field.
+ */
+export interface ViewOptionsTimelineV3Type {
+  date_ranges?: {
+    /** Field ID of the start date column. */
+    start_date_field_id: string;
+    /** Field ID of the end date column. Null means the range is a single point in time. */
+    end_date_field_id?: string | null;
+  }[];
 }
 
 export interface ViewOptionsCalendarV3Type {
@@ -3355,7 +3622,15 @@ export interface ViewBaseV3Type {
   /** Title of the view. */
   title: string;
   /** Type of the view. */
-  type: 'grid' | 'gallery' | 'kanban' | 'calendar' | 'map' | 'form';
+  type:
+    | 'grid'
+    | 'gallery'
+    | 'kanban'
+    | 'calendar'
+    | 'map'
+    | 'form'
+    | 'timeline'
+    | 'gantt';
   /**
    * Lock type of the view.
    *
@@ -3377,7 +3652,15 @@ export interface ViewListV3Type {
     /** Description of the view. */
     description?: string | null;
     /** Type of the view. */
-    type: 'grid' | 'gallery' | 'kanban' | 'calendar' | 'form' | 'map';
+    type:
+      | 'grid'
+      | 'gallery'
+      | 'kanban'
+      | 'calendar'
+      | 'form'
+      | 'map'
+      | 'timeline'
+      | 'gantt';
     /** View configuration edit state. */
     lock_type: 'collaborative' | 'locked' | 'personal';
     /** User ID of the creator. */
@@ -3433,7 +3716,15 @@ export interface ViewSummaryV3Type {
   /** Name of the view. */
   title?: string;
   /** Type of the view. */
-  view_type?: 'grid' | 'gallery' | 'kanban' | 'calendar' | 'form' | 'map';
+  view_type?:
+    | 'grid'
+    | 'gallery'
+    | 'kanban'
+    | 'calendar'
+    | 'form'
+    | 'map'
+    | 'timeline'
+    | 'gantt';
 }
 
 export type HookNotificationV3V3Type =
@@ -5354,6 +5645,8 @@ export interface GridColumnType {
    * @example asc
    */
   group_by_sort?: StringOrNullType;
+  /** Whether this group-by is enabled. Disabled group-bys retain their config but are not applied. */
+  group_by_enabled?: BoolType;
   /**
    * Aggregation Type
    * @example sum
@@ -5385,12 +5678,14 @@ export interface GridColumnReqType {
    * Group By Order
    * @example 1
    */
-  group_by_order?: number;
+  group_by_order?: any;
   /**
    * Group By Sort
    * @example asc
    */
   group_by_sort?: StringOrNullType;
+  /** Whether this group-by is enabled. Disabled group-bys retain their config but are not applied. */
+  group_by_enabled?: BoolType;
   /**
    * Aggregation
    * @example sum
@@ -5541,6 +5836,8 @@ export interface HookReqType {
   /** Is this hook only trigger when some fields are affected */
   trigger_field?: boolean;
   trigger_fields?: string[];
+  /** Optional list of filter rows to attach to this hook in the same call. Useful for atomic save (one op = hook + filters) so undo restores both as one unit. */
+  filters?: FilterReqType[];
 }
 
 /**
@@ -7005,6 +7302,8 @@ export interface ViewType {
         ListType);
   /** ID of view owner user */
   owned_by?: IdType;
+  /** Whether this view can be used as a source for internal sync. */
+  allow_sync?: BoolType;
   /** The row coloring mode whether it is select, condition or not set */
   row_coloring_mode?: 'filter' | 'select';
   /** ID of custom url */
@@ -7093,6 +7392,8 @@ export interface ViewUpdateReqType {
   show_system_fields?: BoolType;
   /** ID of view owner user */
   owned_by?: IdType;
+  /** Whether this view can be used as a source for internal sync. */
+  allow_sync?: BoolType;
 }
 
 /**
@@ -7545,8 +7846,6 @@ export interface WorkflowType {
 }
 
 export interface ExtensionReqType {
-  /** Unique Base ID */
-  base_id?: IdType;
   /** Extension Title */
   title?: string;
   /** Extension ID */
@@ -13098,6 +13397,8 @@ export class Api<
       query?: {
         /** To get Hidden Columns */
         getHiddenColumn?: boolean;
+        /** When 'true', backend auto-casts incoming values (e.g. creates missing select options) instead of rejecting them. */
+        typecast?: string;
       },
       params: RequestParams = {}
     ) =>
@@ -13209,6 +13510,10 @@ export class Api<
       baseName: string,
       tableName: string,
       data: object[],
+      query?: {
+        /** When 'true', backend auto-casts incoming values (e.g. creates missing select options) instead of rejecting them. */
+        typecast?: string;
+      },
       params: RequestParams = {}
     ) =>
       this.request<
@@ -13220,6 +13525,7 @@ export class Api<
       >({
         path: `/api/v1/db/data/bulk/${orgs}/${baseName}/${tableName}/upsert`,
         method: 'POST',
+        query: query,
         body: data,
         type: ContentType.Json,
         format: 'json',
@@ -13290,6 +13596,10 @@ export class Api<
       baseName: string,
       tableName: string,
       data: object[],
+      query?: {
+        /** When 'true', backend auto-casts incoming values (e.g. creates missing select options) instead of rejecting them. */
+        typecast?: string;
+      },
       params: RequestParams = {}
     ) =>
       this.request<
@@ -13301,6 +13611,7 @@ export class Api<
       >({
         path: `/api/v1/db/data/bulk/${orgs}/${baseName}/${tableName}`,
         method: 'PATCH',
+        query: query,
         body: data,
         type: ContentType.Json,
         format: 'json',
@@ -13989,6 +14300,10 @@ export class Api<
       viewName: string,
       rowId: any,
       data: object,
+      query?: {
+        /** When 'true', backend auto-casts incoming values (e.g. creates missing select options) instead of rejecting them. */
+        typecast?: string;
+      },
       params: RequestParams = {}
     ) =>
       this.request<
@@ -14000,6 +14315,7 @@ export class Api<
       >({
         path: `/api/v1/db/data/${orgs}/${baseName}/${tableName}/views/${viewName}/${rowId}`,
         method: 'PATCH',
+        query: query,
         body: data,
         type: ContentType.Json,
         format: 'json',
@@ -18150,6 +18466,10 @@ export class Api<
         rowId?: string;
         /** URL or Path of the attachment */
         urlOrPath?: string;
+        /** Document ID */
+        docId?: string;
+        /** Document Revision ID */
+        revisionId?: string;
       },
       data: Record<string, any>,
       params: RequestParams = {}
@@ -18251,6 +18571,10 @@ export class Api<
         rowId?: string;
         /** URL or Path of the attachment */
         urlOrPath?: string;
+        /** Document ID */
+        docId?: string;
+        /** Document Revision ID */
+        revisionId?: string;
       },
       params: RequestParams = {}
     ) =>
