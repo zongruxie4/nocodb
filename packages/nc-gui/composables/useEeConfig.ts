@@ -344,6 +344,12 @@ export const useEeConfig = createSharedComposable(() => {
 
   const showUpgradeToUseScim = (..._args: any[]) => {}
 
+  const blockWhiteLabel = computed(() => true)
+
+  const showUpgradeToUseWhiteLabel = (..._args: any[]) => {}
+
+  const showUpgradeToUseAudit = (..._args: any[]) => {}
+
   const blockTrashSettings = computed(() => true)
 
   const showUpgradeToUseTrashSettings = (..._args: any[]) => {}
@@ -534,6 +540,9 @@ export const useEeConfig = createSharedComposable(() => {
     showUpgradeToUseSSO,
     blockScim,
     showUpgradeToUseScim,
+    blockWhiteLabel,
+    showUpgradeToUseWhiteLabel,
+    showUpgradeToUseAudit,
     blockSnapshots,
     showUpgradeToUseSnapshots,
     blockCustomUrls,
