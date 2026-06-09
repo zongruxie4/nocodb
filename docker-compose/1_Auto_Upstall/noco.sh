@@ -722,10 +722,6 @@ display_completion() {
   fi
 
   printf '  %bActivate your license:%b open NocoDB → Admin Panel → License → paste your key\n\n' "$BOLD" "$NC"
-  printf '  %bHarden for production:%b\n' "$BOLD" "$NC"
-  printf '    • Allow only 22/80/443 inbound (ufw / firewalld)\n'
-  printf '    • Schedule backups: docs/self-hosting/backups\n'
-  printf '    • Pin image tag in docker-compose.yml (see docs/self-hosting/upgrading)\n\n'
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
