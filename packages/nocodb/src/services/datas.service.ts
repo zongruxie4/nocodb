@@ -217,14 +217,12 @@ export class DatasService {
       source,
     });
 
-    // if xcdb base skip checking for LTAR
-    if (!source.isMeta()) {
-      const message = await baseModel.hasLTARData(param.rowId, model);
-      if (message.length) {
-        NcError.get(context).badRequest(message);
-      }
-    }
-
+    // delByPk cleans up link references itself (mm junction rows are deleted,
+    // hm child FKs are nulled — see shouldCascadeLinkCleanup), the same as for
+    // meta bases and the v3/data-table delete paths. The old external-only
+    // hasLTARData guard predated that cascade logic and only ever fired once
+    // external-source links became real LTAR, blocking deletes that internal
+    // bases allow. Drop it so external behaves consistently.
     return await baseModel.delByPk(param.rowId, null, param.cookie);
   }
 
