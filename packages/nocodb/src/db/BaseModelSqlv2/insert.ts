@@ -574,7 +574,9 @@ export const baseModelInsert = (baseModel: IBaseModelSqlV2) => {
           });
         } else {
           const insertResponseList = await baseModel.chunkList({
-            pks: responses.map((d) => baseModel.extractPksValues(d)),
+            // composite PKs require the `___`-joined string form (asString=true);
+            // the object form stringifies to "[object Object]" in chunkList's join
+            pks: responses.map((d) => baseModel.extractPksValues(d, true)),
           });
 
           // get ast

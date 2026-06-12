@@ -3592,7 +3592,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
       if (toUpdate.length > 0) {
         for (const data of toUpdate) {
           if (!raw) await this.validate(data, columns);
-          const pkValues = this.extractPksValues(data);
+          const pkValues = this.extractPksValues(data, true);
           updatedPks.push(pkValues);
           const wherePk = await this._wherePk(pkValues, true);
           // mssql: drop PK keys from the SET — IDENTITY columns reject
@@ -3717,14 +3717,14 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
       const insertedDataList =
         insertedDatas.length > 0
           ? await this.chunkList({
-              pks: insertedDatas.map((d) => this.extractPksValues(d)),
+              pks: insertedDatas.map((d) => this.extractPksValues(d, true)),
             })
           : [];
 
       const updatedDataList =
         updatedDatas.length > 0
           ? await this.chunkList({
-              pks: updatedDatas.map((d) => this.extractPksValues(d)),
+              pks: updatedDatas.map((d) => this.extractPksValues(d, true)),
             })
           : [];
 
