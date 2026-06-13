@@ -3,6 +3,20 @@ import { NcErrorType } from 'nocodb-sdk'
 import type { UseGlobalReturn } from '../composables/useGlobal/types'
 import type { Actions } from '~/composables/useGlobal/types'
 
+/**
+ * Safely persist to localStorage. In some embedded webviews and privacy
+ * modes `localStorage` is `null` (or accessing it throws a SecurityError),
+ * so direct `localStorage.setItem(...)` crashes the auth middleware. The
+ * continueAfterSignIn hint is non-critical — silently skip when unavailable.
+ */
+function safeSetLocalStorage(key: string, value: string) {
+  try {
+    localStorage?.setItem(key, value)
+  } catch {
+    // storage disabled/unavailable — non-critical, ignore
+  }
+}
+
 /** Strip continueAfterSignIn param from a path to prevent recursive nesting */
 function stripContinueParam(fullPath: string) {
   const qIndex = fullPath.indexOf('?')
@@ -77,7 +91,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
           : undefined
       const query = continuePath ? { continueAfterSignIn: continuePath } : {}
       if (continuePath) {
-        localStorage.setItem('continueAfterSignIn', continuePath)
+        safeSetLocalStorage('continueAfterSignIn', continuePath)
       }
 
       return navigateTo({
@@ -100,7 +114,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
           ? stripContinueParam(to.fullPath)
           : undefined
       if (signinContinuePath) {
-        localStorage.setItem('continueAfterSignIn', signinContinuePath)
+        safeSetLocalStorage('continueAfterSignIn', signinContinuePath)
       }
       return navigateTo({
         path: '/signin',
