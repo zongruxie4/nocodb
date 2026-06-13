@@ -217,7 +217,7 @@ const notificationTypes = computed(() => {
       ? [
           {
             type: 'Script',
-            label: 'Run Script',
+            label: t('labels.runScript'),
           },
         ]
       : []),

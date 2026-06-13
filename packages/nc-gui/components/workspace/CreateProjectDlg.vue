@@ -83,7 +83,7 @@ const onInit = () => {
     form.value?.resetFields()
 
     formState.value = {
-      title: 'Base',
+      title: t('objects.project'),
       meta: {
         iconColor: baseIconColors[Math.floor(Math.random() * 1000) % baseIconColors.length],
       },

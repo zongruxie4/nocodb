@@ -5,9 +5,11 @@ const { activeIntegration, categories, activeCategory } = useIntegrationStore()
 
 const { copy } = useCopy()
 
+const { t } = useI18n()
+
 const copyIp = async () => {
   await copy('52.15.226.51')
-  message.success('Copied to clipboard')
+  message.success(t('msg.info.copiedToClipboard'))
 }
 
 const panelsRef = ref<HTMLElement | null>(null)

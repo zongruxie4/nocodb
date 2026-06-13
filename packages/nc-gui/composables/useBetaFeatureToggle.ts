@@ -1,3 +1,5 @@
+import { getI18n } from '~/plugins/a.i18n'
+
 const FEATURES = [
   {
     id: 'managed_apps',
@@ -40,7 +42,9 @@ const FEATURES = [
   },
   {
     id: 'integrations',
-    title: 'Integrations',
+    get title() {
+      return getI18n().global.t('general.integrations')
+    },
     description: 'Enable dynamic integrations.',
     enabled: true,
     version: 2,
@@ -124,7 +128,9 @@ const FEATURES = [
   },
   {
     id: 'templates',
-    title: 'Templates',
+    get title() {
+      return getI18n().global.t('general.templates')
+    },
     description: 'Enable templates feature to browse and use templates.',
     enabled: true,
     version: 3,

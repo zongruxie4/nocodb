@@ -93,7 +93,7 @@ const importAlias = {
     icon: iconMap.ncFileTypeCsvSmall,
   },
   excel: {
-    title: 'Excel',
+    title: t('labels.excel'),
     icon: iconMap.ncFileTypeExcel,
   },
 }
