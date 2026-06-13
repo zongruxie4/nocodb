@@ -531,8 +531,10 @@ const selectDate = (day: dayjs.Dayjs) => {
 
 // TODO: Add Support for multiple ranges when multiple ranges are supported
 const addRecord = (date: dayjs.Dayjs) => {
-  if (!isUIAllowed('dataEdit') || !calendarRange.value || !isSyncedTable.value) return
-  const fromCol = calendarRange.value[0].fk_from_col
+  // Records can't be added to synced (read-only) tables — return if synced.
+  // (This guard was inverted; the sibling MonthView/DateTimeView use the same check.)
+  if (!isUIAllowed('dataEdit') || !calendarRange.value || isSyncedTable.value) return
+  const fromCol = calendarRange.value[0]?.fk_from_col
   if (!fromCol) return
   const newRecord = {
     row: {

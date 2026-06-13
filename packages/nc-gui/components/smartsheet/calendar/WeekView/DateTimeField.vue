@@ -991,7 +991,7 @@ const isOverflowAcrossHourRange = (hour: dayjs.Dayjs) => {
 // TODO: Add Support for multiple ranges when multiple ranges are supported
 const addRecord = (date: dayjs.Dayjs) => {
   if (!isUIAllowed('dataEdit') || !calendarRange.value || isSyncedTable.value) return
-  const fromCol = calendarRange.value[0].fk_from_col
+  const fromCol = calendarRange.value[0]?.fk_from_col
   if (!fromCol) return
   const newRecord = {
     row: {

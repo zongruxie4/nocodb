@@ -93,45 +93,52 @@ const [useProvideCalendarViewStore, useCalendarViewStore] = useInjectionState(
         is_readonly: boolean
       }>
     >(() => {
-      return calendarMetaData.value?.calendar_range
-        ?.map(
-          (
-            range: CalendarRangeType & {
-              id?: string
+      return (
+        calendarMetaData.value?.calendar_range
+          ?.map(
+            (
+              range: CalendarRangeType & {
+                id?: string
+              },
+            ) => {
+              const fromCol = meta.value?.columns?.find((col) => col.id === range.fk_from_column_id)
+              const toCol = range.fk_to_column_id ? meta.value?.columns?.find((col) => col.id === range.fk_to_column_id) : null
+
+              if (fromCol?.uidt === UITypes.Formula || toCol?.uidt === UITypes.Formula) {
+                // Check if fromCol Formula return type is Date
+                const isFromColDate =
+                  fromCol?.uidt === UITypes.Formula &&
+                  (fromCol?.colOptions as any)?.parsed_tree?.dataType === FormulaDataTypes.DATE
+                // Check if toCol Formula return type is Date
+
+                const isToColDate =
+                  toCol?.uidt === UITypes.Formula && (toCol?.colOptions as any)?.parsed_tree?.dataType === FormulaDataTypes.DATE
+
+                if (!isFromColDate) {
+                  message.error(`Please update the Formula column ${fromCol?.title} to return a date`)
+                  return null
+                }
+
+                if (toCol && !isToColDate) {
+                  message.error(`Please update the Formula column ${toCol?.title} to return a date`)
+                  return null
+                }
+              }
+
+              return {
+                id: range?.id,
+                fk_from_col: fromCol,
+                fk_to_col: toCol,
+                is_readonly: [fromCol, toCol].some((col) => isSystemColumn(col) || isVirtualCol(col)),
+              }
             },
-          ) => {
-            const fromCol = meta.value?.columns?.find((col) => col.id === range.fk_from_column_id)
-            const toCol = range.fk_to_column_id ? meta.value?.columns?.find((col) => col.id === range.fk_to_column_id) : null
-
-            if (fromCol?.uidt === UITypes.Formula || toCol?.uidt === UITypes.Formula) {
-              // Check if fromCol Formula return type is Date
-              const isFromColDate =
-                fromCol?.uidt === UITypes.Formula && (fromCol?.colOptions as any)?.parsed_tree?.dataType === FormulaDataTypes.DATE
-              // Check if toCol Formula return type is Date
-
-              const isToColDate =
-                toCol?.uidt === UITypes.Formula && (toCol?.colOptions as any)?.parsed_tree?.dataType === FormulaDataTypes.DATE
-
-              if (!isFromColDate) {
-                message.error(`Please update the Formula column ${fromCol?.title} to return a date`)
-                return null
-              }
-
-              if (toCol && !isToColDate) {
-                message.error(`Please update the Formula column ${toCol?.title} to return a date`)
-                return null
-              }
-            }
-
-            return {
-              id: range?.id,
-              fk_from_col: fromCol,
-              fk_to_col: toCol,
-              is_readonly: [fromCol, toCol].some((col) => isSystemColumn(col) || isVirtualCol(col)),
-            }
-          },
-        )
-        .filter(Boolean) as any
+          )
+          // Drop ranges whose from-column couldn't be resolved (e.g. the date
+          // column was deleted, or meta isn't loaded yet). Keeping them would
+          // produce entries with `fk_from_col: undefined` despite the declared
+          // non-null type, crashing consumers that read `range.fk_from_col.title`.
+          .filter((range) => !!range?.fk_from_col) as any
+      )
     })
 
     const calDataType = computed(() => {
