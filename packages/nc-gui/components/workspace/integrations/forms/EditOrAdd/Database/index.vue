@@ -92,6 +92,8 @@ const isEnabledSaveChangesBtn = ref(false)
 
 const { isFeatureEnabled } = useBetaFeatureToggle()
 
+const { blockMssql, showUpgradeToUseMssql } = useEeConfig()
+
 const easterEgg = ref(false)
 
 const easterEggCount = ref(0)

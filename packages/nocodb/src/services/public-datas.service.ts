@@ -3,6 +3,8 @@ import {
   extractFilterFromXwhere,
   NcBaseError,
   ncIsArray,
+  NOCO_SERVICE_USERS,
+  ServiceUserType,
   UITypes,
   ViewTypes,
 } from 'nocodb-sdk';
@@ -150,6 +152,90 @@ export class PublicDatasService {
       groupByColumnNames,
       groupByColumns,
     };
+  }
+
+  /**
+   * Returns the set of column IDs accessible to a public/shared-view caller —
+   * i.e. visible view columns plus the Kanban group-by column (already
+   * exposed via stack headers in the UI).
+   *
+   * Used by the public CSV/JSON/Excel export controller to strip
+   * hidden-column references from caller-supplied filterArrJson /
+   * sortArrJson before the export job runs. Without this the export job
+   * would honor filters targeting hidden columns, creating a yes/no
+   * oracle on hidden values (CWE-200).
+   */
+  protected async getPublicAccessibleColumnIds(
+    context: NcContext,
+    view: View,
+  ): Promise<Set<string>> {
+    const viewColumns = await View.getColumns(context, view.id);
+    const accessibleIds = new Set<string>();
+
+    for (const vc of viewColumns) {
+      if (vc.show) accessibleIds.add(vc.fk_column_id);
+    }
+
+    if (view.type === ViewTypes.KANBAN) {
+      const kanbanView = await KanbanView.get(context, view.id);
+      if (kanbanView?.fk_grp_col_id) {
+        accessibleIds.add(kanbanView.fk_grp_col_id);
+      }
+    }
+
+    return accessibleIds;
+  }
+
+  /**
+   * Strips hidden-column references from caller-supplied filterArrJson /
+   * sortArrJson in a public-share export job payload. Mutates `options`
+   * in place. Same column-visibility semantics as
+   * `sanitizeListArgsForPublicView` so the export endpoint and the rows
+   * endpoint stay in lockstep.
+   */
+  public async sanitizeExportJobOptions(
+    context: NcContext,
+    view: View,
+    options: { filterArrJson?: string; sortArrJson?: string } | undefined,
+  ): Promise<void> {
+    if (!options) return;
+
+    const accessibleColumnIds = await this.getPublicAccessibleColumnIds(
+      context,
+      view,
+    );
+
+    if (typeof options.filterArrJson === 'string') {
+      try {
+        const parsed = JSON.parse(options.filterArrJson);
+        if (ncIsArray(parsed)) {
+          const sanitized = this.stripHiddenColumnsFromFilters(
+            parsed,
+            accessibleColumnIds,
+          );
+          options.filterArrJson = JSON.stringify(sanitized);
+        }
+      } catch {
+        // unparseable JSON — drop it rather than letting the worker
+        // re-parse and silently apply a tampered structure
+        delete options.filterArrJson;
+      }
+    }
+
+    if (typeof options.sortArrJson === 'string') {
+      try {
+        const parsed = JSON.parse(options.sortArrJson);
+        if (ncIsArray(parsed)) {
+          const sanitized = this.stripHiddenColumnsFromSorts(
+            parsed,
+            accessibleColumnIds,
+          );
+          options.sortArrJson = JSON.stringify(sanitized);
+        }
+      } catch {
+        delete options.sortArrJson;
+      }
+    }
   }
 
   /**
@@ -931,6 +1017,18 @@ export class PublicDatasService {
 
     // Check if form has started / expired
     await FormView.validateFormScheduling(context, view.id);
+
+    // Public form submissions are unauthenticated by design (the public
+    // controller runs no GlobalGuard), so req.user is empty and the resulting
+    // DATA_INSERT / nested DATA_LINK audits would have a NULL actor. Attribute
+    // them to the anonymous service user and stamp the shared view/form id so
+    // the submission stays traceable.
+    if (!param.req.user?.id) {
+      param.req.user = {
+        ...NOCO_SERVICE_USERS[ServiceUserType.ANONYMOUS_USER],
+      } as NcRequest['user'];
+    }
+    param.req.ncSharedViewId = view.id;
 
     const model = await Model.getByIdOrName(context, {
       id: view?.fk_model_id,
