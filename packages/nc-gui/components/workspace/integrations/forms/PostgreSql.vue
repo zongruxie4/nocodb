@@ -5,9 +5,11 @@ const { activeIntegration, categories, activeCategory } = useIntegrationStore()
 
 const { copy } = useCopy()
 
+const { t } = useI18n()
+
 const copyIp = async () => {
   await copy('52.15.226.51')
-  message.success('Copied to clipboard')
+  message.success(t('msg.info.copiedToClipboard'))
 }
 
 const panelsRef = ref<HTMLElement | null>(null)
@@ -99,7 +101,7 @@ const onInputFocus = () => {
         </div>
       </div>
     </WorkspaceIntegrationsPanel>
-    <WorkspaceIntegrationsPanel title="SSL & Advanced Parameters" icon="lock" :collapsible="true">
+    <WorkspaceIntegrationsPanel :title="$t('title.advancedParameters')" icon="lock" :collapsible="true">
       <div class="input-group">
         <div class="input-item">
           <label class="!text-xs font-weight-normal pb-1">SSL Mode</label>
@@ -126,7 +128,7 @@ const onInputFocus = () => {
       <div class="w-full border-t-1 mt-2 mb-4"></div>
       <div class="input-group">
         <div class="input-item">
-          <label class="!text-xs font-weight-normal pb-1">Extra Connection Parameters</label>
+          <label class="!text-xs font-weight-normal pb-1">{{ $t('labels.extraConnectionParameters') }}</label>
           <a-input v-model:value="activeIntegration.payload.sslCert" class="input-text" @focus="onInputFocus" />
         </div>
       </div>

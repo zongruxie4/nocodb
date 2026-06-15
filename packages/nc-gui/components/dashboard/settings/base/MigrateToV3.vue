@@ -46,7 +46,7 @@ const migrateToV3 = async () => {
 
 <template>
   <div data-testid="nc-settings-subtab-migrate-to-v3" class="item-card flex flex-col w-full">
-    <div class="text-nc-content-gray-emphasis font-semibold text-lg">Migrate to v3</div>
+    <div class="text-nc-content-gray-emphasis font-semibold text-lg">{{ $t('labels.migrateToV3') }}</div>
 
     <div class="text-nc-content-gray-subtle2 mt-2 leading-5">
       Upgrade this base to v3 to unlock the latest platform capabilities and future-ready APIs.
@@ -100,7 +100,7 @@ const migrateToV3 = async () => {
 
       <div class="flex gap-2">
         <NcButton size="medium" type="primary" data-testid="nc-migrate-to-v3-button" @click="isModalVisible = true">
-          Migrate to v3
+          {{ $t('labels.migrateToV3') }}
         </NcButton>
       </div>
     </div>

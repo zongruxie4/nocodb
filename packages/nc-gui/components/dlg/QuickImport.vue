@@ -780,7 +780,7 @@ watch(
               </template>
               <div class="relative mt-5">
                 <div class="flex items-end gap-2">
-                  <label class="text-nc-content-gray text-sm"> Enter Json </label>
+                  <label class="text-nc-content-gray text-sm"> {{ $t('labels.enterJson') }} </label>
                   <div class="flex-1" />
 
                   <template v-if="preImportLoading">

@@ -240,14 +240,14 @@ function focusInput() {
 const tabs = computed(() => {
   return [
     {
-      title: 'Icon',
+      title: t('labels.icon'),
       value: IconType.ICON,
       icon: 'ncPlaceholderIcon',
     },
     ...(!isMobileMode.value
       ? [
           {
-            title: 'Upload',
+            title: t('general.upload'),
             value: IconType.IMAGE,
             icon: 'ncUpload',
           },

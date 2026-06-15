@@ -610,7 +610,7 @@ async function openNewRecordHandler() {
     >
       <div class="flex items-center gap-2">
         <GeneralIcon icon="plus" />
-        New Record
+        {{ $t('activity.newRecord') }}
       </div>
     </NcButton>
   </div>

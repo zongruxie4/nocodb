@@ -1213,7 +1213,7 @@ watch(
                     </template>
 
                     <div class="flex flex-col gap-2">
-                      <div>Edit Connection JSON</div>
+                      <div>{{ $t('activity.editConnJson') }}</div>
                       <div class="border-1 border-nc-border-gray-medium !rounded-lg shadow-sm overflow-hidden">
                         <Suspense>
                           <template #default>

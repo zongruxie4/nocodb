@@ -3601,7 +3601,7 @@ watch(
         <NcButton class="nc-grid-add-new-row" size="small" disabled type="secondary" :shadow="false">
           <div class="flex items-center gap-2">
             <GeneralIcon icon="plus" />
-            New Record
+            {{ $t('activity.newRecord') }}
           </div>
         </NcButton>
         <template #title>
@@ -3632,7 +3632,7 @@ watch(
               >
                 <div class="flex items-center gap-2">
                   <GeneralIcon icon="plus" />
-                  New Record
+                  {{ $t('activity.newRecord') }}
                 </div>
               </NcButton>
               <NcButton

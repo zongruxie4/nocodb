@@ -326,7 +326,7 @@ onUnmounted(() => {
             <template #message>
               <div class="flex flex-row items-center gap-2 mb-2">
                 <GeneralIcon icon="ncAlertCircleFilled" class="text-nc-content-red-medium w-4 h-4" />
-                <span class="font-weight-700 text-[14px]">Import error</span>
+                <span class="font-weight-700 text-[14px]">{{ $t('msg.error.importError') }}</span>
               </div>
             </template>
             <template #description>

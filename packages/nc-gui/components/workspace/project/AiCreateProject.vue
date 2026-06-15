@@ -36,6 +36,8 @@ const { navigateToProject } = useGlobal()
 
 const { $e } = useNuxtApp()
 
+const { t } = useI18n()
+
 const { isWorkspaceLoading } = storeToRefs(useWorkspace())
 
 const { aiIntegrationAvailable, aiError, aiLoading, createSchema, predictSchema } = useNocoAi()
@@ -116,17 +118,17 @@ const isOldPromptChanged = computed(() => {
 const additionalDetails = [
   {
     title: 'Organisation',
-    placeholder: '(optional)',
+    placeholder: t('labels.optional'),
     key: 'organization',
   },
   {
     title: 'Industry',
-    placeholder: '(optional)',
+    placeholder: t('labels.optional'),
     key: 'industry',
   },
   {
     title: 'Audience',
-    placeholder: '(optional)',
+    placeholder: t('labels.optional'),
     key: 'audience',
   },
 ]
