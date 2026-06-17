@@ -856,12 +856,31 @@ const [useProvideLTARStore, useLTARStore] = useInjectionState(
       const colTitle = column.value.title as string
       const colId = column.value.id as string
       const queue = pendingLtarOps.value
+      const base = cur.oldRow?.[colTitle]
+
+      // Single-target (BT/OO/MO): the cell holds one linked record (or null).
       if (isSingleTargetRelation.value) {
-        cur.row[colTitle] = resolveDeferredSingleTargetValue(queue, colId, cur.oldRow?.[colTitle] ?? null)
+        cur.row[colTitle] = resolveDeferredSingleTargetValue(queue, colId, base ?? null)
+        return
+      }
+
+      // Multi-target: keep the child-list count badge in sync, and preserve the cell
+      // value's SHAPE. V2 Links cells hold a numeric rollup count; V1 hm/mm cells hold an
+      // array of linked records (rendered as chips — ManyToMany.vue calls .reduce on it),
+      // so a bare count would break them.
+      const persistedCount = Array.isArray(base) ? base.length : +(base ?? 0) || 0
+      const count = resolveDeferredLtarCount(queue, colId, persistedCount)
+      childrenListCount.value = count
+
+      if (isLinkV2(column.value)) {
+        cur.row[colTitle] = count
       } else {
-        const next = resolveDeferredLtarCount(queue, colId, +(cur.oldRow?.[colTitle] ?? 0) || 0)
-        cur.row[colTitle] = next
-        childrenListCount.value = next
+        const unlinkIds = new Set(
+          queue.filter((o) => o.columnId === colId && o.op === 'unlink').map((o) => o.relatedRowId),
+        )
+        const linkRecords = queue.filter((o) => o.columnId === colId && o.op === 'link').map((o) => o.record)
+        const baseArr = Array.isArray(base) ? base : []
+        cur.row[colTitle] = [...baseArr.filter((r) => !unlinkIds.has(`${getRelatedTableRowId(r)}`)), ...linkRecords]
       }
     }
 
