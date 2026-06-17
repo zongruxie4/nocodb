@@ -52,6 +52,19 @@ const [useProvideLTARStore, useLTARStore] = useInjectionState(
         .filter((o) => o.columnId === column.value.id && o.op === 'link')
         .map((o) => o.record)
 
+    // Related records the user has queued for unlink (existing-row deferral). The server's
+    // excluded list omits these because they're still linked until save, so they would vanish
+    // from the link picker with no way to re-add — surface them so they stay re-linkable from
+    // "Link more records" (#14013). Pure computed over the reactive queue; unlink only applies
+    // to existing rows (new rows have no persisted links to remove).
+    const pendingUnlinkRows = computed<Record<string, any>[]>(() =>
+      isNewRow?.value
+        ? []
+        : (pendingLtarOps?.value ?? [])
+            .filter((o) => o.columnId === column.value.id && o.op === 'unlink')
+            .map((o) => o.record),
+    )
+
     const refreshCurrentRow = () => {
       currentRow.value = row.value
     }
@@ -1494,6 +1507,7 @@ const [useProvideLTARStore, useLTARStore] = useInjectionState(
       shouldDefer,
       isSingleTargetRelation,
       pendingLinkRows,
+      pendingUnlinkRows,
       removePendingLink,
       isPendingLink,
       isPendingUnlink,
