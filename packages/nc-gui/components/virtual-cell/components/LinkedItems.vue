@@ -371,13 +371,16 @@ const calculateSlices = () => {
   rowSlice.end = Math.min(childrenCachedTotalRows.value, endIndex + ROW_VIRTUAL_MARGIN)
 }
 
-// Recompute the virtual slice whenever the total OR the set of cached rows changes — e.g.
-// after the first chunk loads, or when the list remounts on returning from the link-records
-// modal. `flush: 'post'` runs the callback after the DOM updates so the scroll container is
-// already mounted and measured; without it the persisted list computes an empty slice on
-// remount and only renders the already-linked rows once the user scrolls (#14058 review).
+// Recompute the virtual slice whenever the total OR the set of cached rows changes, AND once
+// immediately on mount. `immediate` matters because the list remounts on returning from the
+// link-records modal while the chunk cache is still populated — so there's no total/size change
+// to react to, and a change-only watch would leave rowSlice at {0,0} until the user scrolls,
+// hiding the already-linked persisted rows. `flush: 'post'` runs the callback after the DOM
+// updates so the scroll container is mounted and measured when calculateSlices reads it
+// (#14058 review).
 watch([childrenCachedTotalRows, () => childrenCachedRows.value.size], () => calculateSlices(), {
   flush: 'post',
+  immediate: true,
 })
 
 const updateVisibleChunks = () => {
