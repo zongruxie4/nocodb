@@ -264,7 +264,7 @@ watch(
               <div
                 v-for="sort of displayedSorts"
                 :key="sort.id || sort.fk_column_id"
-                class="flex first:mb-0 !mb-1.5 !last:mb-0 items-center"
+                class="flex first:mb-0 !mb-1.5 !last:mb-0 items-center gap-2"
                 :class="{ 'nc-sort-disabled-row': sort.enabled === false }"
               >
                 <NcCheckbox
@@ -275,57 +275,60 @@ watch(
                   class="nc-sort-enabled-checkbox xs:(flex min-h-8)"
                   @change="onToggleSortEnabled(sort)"
                 />
-                <SmartsheetToolbarFieldListAutoCompleteDropdown
-                  v-model="sort.fk_column_id"
-                  class="flex caption nc-sort-field-select !w-44 flex-grow"
-                  :columns="columns"
-                  is-sort
-                  :meta="meta"
-                  :disabled="false"
-                  @click.stop
-                  @update:model-value="saveOrUpdate(sort, getSortIndex(sort))"
-                />
-
-                <NcSelect
-                  v-model:value="sort.direction"
-                  class="flex flex-grow-1 w-full nc-sort-dir-select"
-                  :label="$t('labels.operation')"
-                  dropdown-class-name="sort-dir-dropdown nc-dropdown-sort-dir !rounded-lg"
-                  :disabled="false"
-                  @click.stop
-                  @select="saveOrUpdate(sort, getSortIndex(sort))"
-                >
-                  <a-select-option
-                    v-for="(option, j) of getSortDirectionOptions(getColumnUidtByID(sort.fk_column_id))"
-                    :key="j"
-                    v-e="['c:sort:operation:select']"
-                    :value="option.value"
-                  >
-                    <div class="w-full flex items-center justify-between gap-2">
-                      <div class="truncate flex-1">{{ option.text }}</div>
-                      <component
-                        :is="iconMap.check"
-                        v-if="sort.direction === option.value"
-                        id="nc-selected-item-icon"
-                        class="text-primary w-4 h-4"
-                      />
-                    </div>
-                  </a-select-option>
-                </NcSelect>
-
-                <NcTooltip placement="top" :title="$t('general.remove')" class="flex-none">
-                  <NcButton
-                    v-e="['c:sort:delete']"
-                    size="small"
-                    type="secondary"
-                    :shadow="false"
+                <!-- joined control group (no internal gap so the field/dir/remove stay connected) -->
+                <div class="flex items-center flex-1 min-w-0">
+                  <SmartsheetToolbarFieldListAutoCompleteDropdown
+                    v-model="sort.fk_column_id"
+                    class="flex caption nc-sort-field-select !w-44 flex-grow"
+                    :columns="columns"
+                    is-sort
+                    :meta="meta"
                     :disabled="false"
-                    class="nc-sort-item-remove-btn !max-w-8 !border-l-transparent !rounded-l-none"
-                    @click.stop="deleteSort(sort, getSortIndex(sort))"
+                    @click.stop
+                    @update:model-value="saveOrUpdate(sort, getSortIndex(sort))"
+                  />
+
+                  <NcSelect
+                    v-model:value="sort.direction"
+                    class="flex flex-grow-1 w-full nc-sort-dir-select"
+                    :label="$t('labels.operation')"
+                    dropdown-class-name="sort-dir-dropdown nc-dropdown-sort-dir !rounded-lg"
+                    :disabled="false"
+                    @click.stop
+                    @select="saveOrUpdate(sort, getSortIndex(sort))"
                   >
-                    <component :is="iconMap.deleteListItem" />
-                  </NcButton>
-                </NcTooltip>
+                    <a-select-option
+                      v-for="(option, j) of getSortDirectionOptions(getColumnUidtByID(sort.fk_column_id))"
+                      :key="j"
+                      v-e="['c:sort:operation:select']"
+                      :value="option.value"
+                    >
+                      <div class="w-full flex items-center justify-between gap-2">
+                        <div class="truncate flex-1">{{ option.text }}</div>
+                        <component
+                          :is="iconMap.check"
+                          v-if="sort.direction === option.value"
+                          id="nc-selected-item-icon"
+                          class="text-primary w-4 h-4"
+                        />
+                      </div>
+                    </a-select-option>
+                  </NcSelect>
+
+                  <NcTooltip placement="top" :title="$t('general.remove')" class="flex-none">
+                    <NcButton
+                      v-e="['c:sort:delete']"
+                      size="small"
+                      type="secondary"
+                      :shadow="false"
+                      :disabled="false"
+                      class="nc-sort-item-remove-btn !max-w-8 !border-l-transparent !rounded-l-none"
+                      @click.stop="deleteSort(sort, getSortIndex(sort))"
+                    >
+                      <component :is="iconMap.deleteListItem" />
+                    </NcButton>
+                  </NcTooltip>
+                </div>
               </div>
             </template>
             <template v-else>
