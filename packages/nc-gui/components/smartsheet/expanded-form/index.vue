@@ -705,7 +705,7 @@ const onIsExpandedUpdate = (v: boolean) => {
 
   if (isDropdownOpen) return
 
-  if (changedColumns.value.size === 0 && !isUnsavedFormExist.value) {
+  if (changedColumns.value.size === 0 && !isUnsavedFormExist.value && !isLTARChanged.value) {
     isExpanded.value = v
     if (isKanban.value) {
       emits('cancel')

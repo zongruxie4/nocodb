@@ -851,6 +851,22 @@ const [useProvideLTARStore, useLTARStore] = useInjectionState(
             rowStoreCurrentRow.value.row[column.value.title!] = null
           } else {
             childrenListCount.value = Math.max(0, childrenListCount.value - 1)
+
+            // Reflect the buffered unlink on the row value so the cell
+            // (CellValueInj = row.row[col]) refreshes immediately, without
+            // waiting for save + reload. Legacy V1 HM/MM hold an array of
+            // linked rows; V2 Links hold a numeric rollup count.
+            const colVal = rowStoreCurrentRow.value.row[column.value.title!]
+            if (Array.isArray(colVal)) {
+              const idx = colVal.findIndex(
+                (r: Record<string, any>) => getRelatedTableRowId(r) === getRelatedTableRowId(row),
+              )
+              const next = [...colVal]
+              if (idx !== -1) next.splice(idx, 1)
+              rowStoreCurrentRow.value.row[column.value.title!] = next
+            } else {
+              rowStoreCurrentRow.value.row[column.value.title!] = Math.max(0, (+colVal || 0) - 1)
+            }
           }
         }
 
@@ -951,6 +967,19 @@ const [useProvideLTARStore, useLTARStore] = useInjectionState(
             rowStoreCurrentRow.value.row[column.value.title!] = row
           } else {
             childrenListCount.value = childrenListCount.value + 1
+
+            // Reflect the buffered link on the row value so the cell
+            // (CellValueInj = row.row[col]) refreshes immediately. Legacy V1
+            // HM/MM hold an array of linked rows; V2 Links hold a numeric
+            // rollup count.
+            const colVal = rowStoreCurrentRow.value.row[column.value.title!]
+            if (Array.isArray(colVal)) {
+              if (!colVal.some((r: Record<string, any>) => getRelatedTableRowId(r) === getRelatedTableRowId(row))) {
+                rowStoreCurrentRow.value.row[column.value.title!] = [...colVal, row]
+              }
+            } else {
+              rowStoreCurrentRow.value.row[column.value.title!] = (+colVal || 0) + 1
+            }
           }
         }
 
