@@ -8739,6 +8739,16 @@
             }
           }
         },
+        "AutoNumber": {
+          "title": "AutoNumber",
+          "properties": {
+            "type": {
+              "enum": [
+                "AutoNumber"
+              ]
+            }
+          }
+        },
         "QrCode": {
           "title": "QrCode",
           "properties": {
@@ -11264,7 +11274,8 @@
               "LastModifiedBy",
               "LinkToAnotherRecord",
               "User",
-              "JSON"
+              "JSON",
+              "AutoNumber"
             ],
             "description": "Field data type."
           },
@@ -11342,7 +11353,8 @@
                   "CreatedBy",
                   "LastModifiedBy",
                   "User",
-                  "JSON"
+                  "JSON",
+                  "AutoNumber"
                 ],
                 "description": "Field data type."
               }
