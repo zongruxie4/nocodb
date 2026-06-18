@@ -133,13 +133,18 @@ const isAttachmentLeafLookup = computed(
     isAttachment(lookupLeafColumn.value),
 )
 
-// A User-type leaf (User / CreatedBy / LastModifiedBy) can hold multiple users
-// in a single related record (comma-joined ids), so one arrValue element maps
-// to many rendered chips. Used to count actual values for the dropdown gate.
-const isUserLeafLookup = computed(
+// A "multi-value" leaf packs several values into a single related record, so one
+// arrValue element maps to many rendered chips: User / CreatedBy / LastModifiedBy
+// (comma-joined user ids or an array of users) and MultiSelect (comma-joined option
+// titles). Used to count actual values for the dropdown gate. Splitting on ',' is
+// safe here — user ids are comma-free nanoids and MultiSelect option titles are
+// validated to reject commas (columns.service.ts / SelectOptions.vue).
+const isMultiValueLeafLookup = computed(
   () =>
     !!lookupLeafColumn.value &&
-    [UITypes.User, UITypes.CreatedBy, UITypes.LastModifiedBy].includes(lookupLeafColumn.value.uidt as UITypes),
+    [UITypes.User, UITypes.CreatedBy, UITypes.LastModifiedBy, UITypes.MultiSelect].includes(
+      lookupLeafColumn.value.uidt as UITypes,
+    ),
 )
 
 // Ensure every table meta in the lookup chain is loaded so lookupLeafColumn can
@@ -297,16 +302,17 @@ const isSearchable = computed(() => {
   return searchableUITypes.includes(lookupColumn.value.uidt! as UITypes)
 })
 
-// Number of values the dropdown would show. arrValue counts related records,
-// but a User leaf packs multiple comma-joined users into one element — so a
-// single linked record with several users must still open the dropdown.
+// Number of values the dropdown would show. arrValue counts related records, but a
+// multi-value leaf (User family / MultiSelect) packs several comma-joined values into
+// one element — so a single linked record with multiple values must still open the
+// dropdown.
 const dropdownValueCount = computed(() => {
-  if (!isUserLeafLookup.value) return arrValue.value.length
+  if (!isMultiValueLeafLookup.value) return arrValue.value.length
 
   return arrValue.value.reduce((count, v) => {
     if (v === null || v === undefined) return count
     if (ncIsArray(v)) return count + v.length
-    if (ncIsString(v)) return count + v.split(',').filter((id) => id.trim()).length
+    if (ncIsString(v)) return count + v.split(',').filter((val) => val.trim()).length
     return count + 1
   }, 0)
 })
