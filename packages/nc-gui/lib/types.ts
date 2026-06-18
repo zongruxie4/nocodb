@@ -923,6 +923,13 @@ interface NcListProps {
   isLocked?: boolean
 
   /**
+   * Show a loading spinner in place of the list body while data is being fetched.
+   * Search input and header/footer slots stay visible.
+   * @default false
+   */
+  isLoading?: boolean
+
+  /**
    * Whether input should have border
    */
   inputBordered?: boolean

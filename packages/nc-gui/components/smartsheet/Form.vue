@@ -167,8 +167,6 @@ const dropdownStates = ref({
 })
 const drag = ref(false)
 
-const emailMe = ref(false)
-
 const submitted = ref(false)
 
 const isLoadingFormView = ref(false)
@@ -958,19 +956,6 @@ async function handleAddOrRemoveAllColumns<T>(value: T) {
   }
 }
 
-async function checkSMTPStatus() {
-  if (emailMe.value && !isEeUI) {
-    const emailPluginActive = await $api.plugin.status('smtp')
-    if (!emailPluginActive) {
-      emailMe.value = false
-      // Please activate SMTP plugin in App store for enabling email notification
-      message.info(t('msg.toast.formEmailSMTP'))
-      return false
-    }
-  }
-  return true
-}
-
 function setFormData() {
   const col = formColumnData?.value || []
   systemFieldsIds.value = getSystemColumns(col).map((c) => c.fk_column_id)
@@ -989,35 +974,12 @@ function setFormData() {
     },
   }
 
-  // email me
-  let data: Record<string, boolean> = {}
-  try {
-    data = JSON.parse(formViewData.value?.email || '') || {}
-  } catch (e) {}
-
-  emailMe.value = data[user.value?.email as string]
-
   localColumns.value = col
     .filter((f) => !isFormViewHiddenCol(f) && !systemFieldsIds.value.includes(f.fk_column_id))
     .sort((a, b) => a.order - b.order)
     .map((c) => ({ ...c, required: !!c.required }))
 
   checkFieldVisibility()
-}
-
-async function updateEmail() {
-  try {
-    if (!(await checkSMTPStatus())) return
-
-    const data = formViewData.value?.email ? JSON.parse(formViewData.value?.email) : {}
-    data[user.value?.email as string] = emailMe.value
-    formViewData.value!.email = JSON.stringify(data)
-  } catch (e) {}
-}
-
-function onEmailChange() {
-  updateEmail()
-  updateView()
 }
 
 function resetFormFieldState() {
@@ -2645,19 +2607,16 @@ const { message: templatedMessage } = useTemplatedMessage(
                           </template>
 
                           <div class="flex items-center justify-between gap-3">
-                            <!-- Email me at <email> -->
-                            <span>
-                              {{ $t('msg.info.emailForm') }}
-                              <span class="text-bold text-nc-content-gray-subtle2 underline">{{ user?.email }}</span>
-                            </span>
-                            <a-switch
-                              v-model:checked="emailMe"
-                              v-e="[`a:form-view:email-me`]"
-                              size="small"
-                              class="nc-form-checkbox-send-email"
-                              data-testid="nc-form-checkbox-send-email"
+                            <!-- Email responses to selected base collaborators -->
+                            <span>{{ $t('labels.emailResponses') }}</span>
+                            <SmartsheetFormEmailResponses
+                              v-if="formViewData"
+                              :model-value="formViewData.email"
+                              :base-id="base?.id"
                               :disabled="isLocked || !isEditable"
-                              @change="onEmailChange"
+                              class="nc-form-email-responses"
+                              @update:model-value="(val) => (formViewData!.email = val)"
+                              @change="updateView"
                             />
                           </div>
                         </div>
