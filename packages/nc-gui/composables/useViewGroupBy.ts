@@ -603,6 +603,16 @@ const [useProvideViewGroupBy, useViewGroupBy] = useInjectionState(
           return
         }
 
+        // Hard-reset the tree so it rebuilds from scratch for the new grouping.
+        // `processGroupData` reuses existing group objects by key via
+        // `Object.assign`, which does NOT overwrite their `children`/`nestedIn`
+        // sub-tree — so without this, removing or disabling a nesting level
+        // leaves stale child groups whose row queries still carry the old
+        // level's constraint (e.g. `(Title,..)~and(Label,..)`), and the groups
+        // render empty after the change. Clearing children forces a clean
+        // rebuild at the new depth.
+        rootGroup.value.children = []
+        rootGroup.value.rows = []
         rootGroup.value.paginationData = { page: 1, pageSize: groupByGroupLimit.value }
         rootGroup.value.column = {} as any
         refreshNested()
