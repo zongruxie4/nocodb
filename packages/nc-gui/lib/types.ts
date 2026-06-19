@@ -131,6 +131,9 @@ interface Row {
     commentCount?: number
     changed?: boolean
     saving?: boolean
+    // Buffered links for a NEW (not-yet-created) record — persisted via the create
+    // payload on save. Existing-row deferred edits use the row store's pendingLtarOps
+    // queue instead (#14013, #14058).
     ltarState?: Record<string, Record<string, any> | Record<string, any>[] | null>
     fromExpandedForm?: boolean
     // Row is hidden by RLS policy after insert

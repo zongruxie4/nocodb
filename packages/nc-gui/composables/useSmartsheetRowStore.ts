@@ -1,4 +1,5 @@
 import type { MaybeRef } from '@vueuse/core'
+import type { PendingLtarOp } from '~/utils/ltarDeferredOps'
 
 const [useProvideSmartsheetRowStore, useSmartsheetRowStore] = useInjectionState(
   (row: MaybeRef<Row>, changedColumns: Ref<Set<string>> = ref(new Set<string>())) => {
@@ -32,7 +33,21 @@ const [useProvideSmartsheetRowStore, useSmartsheetRowStore] = useInjectionState(
       return row.row[column?.title]
     })
 
-    const { addLTARRef, removeLTARRef, syncLTARRefs, loadRow, clearLTARCell, cleaMMCell } = useSmartsheetLtarHelpersOrThrow()
+    const { addLTARRef, removeLTARRef, loadRow, clearLTARCell, cleaMMCell } = useSmartsheetLtarHelpersOrThrow()
+
+    // Existing-row relation edits deferred by the expanded form until Save (#14013, #14058).
+    // A single reconciling queue (link/unlink ops cancel their inverse, dups ignored) replayed
+    // on save. New rows instead buffer links in rowMeta.ltarState. Empty in grid / public contexts.
+    const pendingLtarOps = ref<PendingLtarOp[]>([])
+
+    // True when the row has buffered link/unlink changes not yet persisted.
+    // Drives the expanded form's "modified" state for relational fields.
+    const hasLtarChanges = computed(() => {
+      const ltarState = currentRow.value?.rowMeta?.ltarState ?? {}
+      const hasEntries = (s: Record<string, any>) =>
+        Object.values(s).some((v) => (Array.isArray(v) ? v.length > 0 : !!v))
+      return pendingLtarOps.value.length > 0 || hasEntries(ltarState)
+    })
 
     return {
       pk,
@@ -40,6 +55,8 @@ const [useProvideSmartsheetRowStore, useSmartsheetRowStore] = useInjectionState(
       changedColumns,
       state,
       isNew,
+      hasLtarChanges,
+      pendingLtarOps,
       displayValue,
       // todo: use better name
       addLTARRef: async (...args: any) => {
@@ -51,7 +68,6 @@ const [useProvideSmartsheetRowStore, useSmartsheetRowStore] = useInjectionState(
         await removeLTARRef(currentRow.value, ...args)
         triggerRef(currentRow as Ref)
       },
-      syncLTARRefs: (...args: any) => syncLTARRefs(currentRow.value, ...args),
       loadRow: (...args: any) => loadRow(currentRow.value, ...args),
       currentRow,
       clearLTARCell: (...args: any) => clearLTARCell(currentRow.value, ...args),
