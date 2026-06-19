@@ -496,6 +496,7 @@ export class UtilsService {
       dashboardPath: this.configService.get('dashboardPath', { infer: true }),
       inviteOnlySignup: settings.invite_only_signup,
       restrictWorkspaceCreation: settings.restrict_workspace_creation,
+      allowEmailSigninWithSso: settings.allow_email_signin_with_sso,
       samlProviderName,
       samlAuthEnabled,
       giftUrl,

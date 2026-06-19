@@ -45,6 +45,7 @@ export interface AppInfo {
   dashboardPath: string
   inviteOnlySignup: boolean
   restrictWorkspaceCreation: boolean
+  allowEmailSigninWithSso: boolean
   samlAuthEnabled: boolean
   samlProviderName: string | null
   giftUrl: string
