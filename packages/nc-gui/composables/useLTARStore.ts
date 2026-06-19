@@ -13,11 +13,7 @@ import {
   timeFormats,
 } from 'nocodb-sdk'
 import type { ComputedRef, Ref } from 'vue'
-import {
-  reconcilePendingLtarOp,
-  resolveDeferredLtarCount,
-  resolveDeferredSingleTargetValue,
-} from '~/utils/ltarDeferredOps'
+import { reconcilePendingLtarOp, resolveDeferredLtarCount, resolveDeferredSingleTargetValue } from '~/utils/ltarDeferredOps'
 
 interface DataApiResponse {
   list: Record<string, any>[]
@@ -48,9 +44,7 @@ const [useProvideLTARStore, useLTARStore] = useInjectionState(
 
     // Related records queued as pending links for this column (existing-row deferral).
     const queuedLinkRecords = () =>
-      (pendingLtarOps?.value ?? [])
-        .filter((o) => o.columnId === column.value.id && o.op === 'link')
-        .map((o) => o.record)
+      (pendingLtarOps?.value ?? []).filter((o) => o.columnId === column.value.id && o.op === 'link').map((o) => o.record)
 
     // Related records the user has queued for unlink (existing-row deferral). The server's
     // excluded list omits these because they're still linked until save, so they would vanish
@@ -60,9 +54,7 @@ const [useProvideLTARStore, useLTARStore] = useInjectionState(
     const pendingUnlinkRows = computed<Record<string, any>[]>(() =>
       isNewRow?.value
         ? []
-        : (pendingLtarOps?.value ?? [])
-            .filter((o) => o.columnId === column.value.id && o.op === 'unlink')
-            .map((o) => o.record),
+        : (pendingLtarOps?.value ?? []).filter((o) => o.columnId === column.value.id && o.op === 'unlink').map((o) => o.record),
     )
 
     const refreshCurrentRow = () => {
@@ -891,9 +883,7 @@ const [useProvideLTARStore, useLTARStore] = useInjectionState(
       if (column.value.uidt === UITypes.Links) {
         cur.row[colTitle] = count
       } else {
-        const unlinkIds = new Set(
-          queue.filter((o) => o.columnId === colId && o.op === 'unlink').map((o) => o.relatedRowId),
-        )
+        const unlinkIds = new Set(queue.filter((o) => o.columnId === colId && o.op === 'unlink').map((o) => o.relatedRowId))
         const linkRecords = queue.filter((o) => o.columnId === colId && o.op === 'link').map((o) => o.record)
         const baseArr = Array.isArray(base) ? base : []
         cur.row[colTitle] = [...baseArr.filter((r) => !unlinkIds.has(`${getRelatedTableRowId(r)}`)), ...linkRecords]
@@ -948,9 +938,7 @@ const [useProvideLTARStore, useLTARStore] = useInjectionState(
           childrenListCount.value = Math.max(0, childrenListCount.value - 1)
           const colVal = rowStoreCurrentRow.value.row[column.value.title!]
           if (Array.isArray(colVal)) {
-            const idx = colVal.findIndex(
-              (r: Record<string, any>) => getRelatedTableRowId(r) === getRelatedTableRowId(relatedRow),
-            )
+            const idx = colVal.findIndex((r: Record<string, any>) => getRelatedTableRowId(r) === getRelatedTableRowId(relatedRow))
             const next = [...colVal]
             if (idx !== -1) next.splice(idx, 1)
             rowStoreCurrentRow.value.row[column.value.title!] = next

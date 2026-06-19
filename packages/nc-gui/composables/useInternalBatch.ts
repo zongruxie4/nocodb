@@ -145,12 +145,9 @@ function getBatcher(api: any, workspaceId: string, baseId: string): Batcher {
   let b = perApi.get(key)
   if (!b) {
     b = new Batcher(async (ops) => {
-      const res: any = await api.internal.postOperation(
-        workspaceId,
-        baseId,
-        { operation: 'batch' as any },
-        { operations: ops } as any,
-      )
+      const res: any = await api.internal.postOperation(workspaceId, baseId, { operation: 'batch' as any }, {
+        operations: ops,
+      } as any)
       return (res?.results as BatchResult[]) ?? []
     })
     perApi.set(key, b)
@@ -184,7 +181,7 @@ function shouldBatch(
       !warnedDowngradeOps.has(params.operation)
     ) {
       warnedDowngradeOps.add(params.operation)
-      // eslint-disable-next-line no-console
+
       console.warn(
         `[useInternalBatch] '${params.operation}' is on the batch allowlist ` +
           `but was called with requestParams; the call won't be batched. ` +
@@ -221,12 +218,7 @@ export function useInternalBatch() {
     const queued = shouldBatch(workspaceId, baseId, params, requestParams)
     const clean = stripBatchMarker(params)
     if (!queued) {
-      return $api.internal.getOperation(
-        workspaceId,
-        baseId,
-        clean as any,
-        requestParams,
-      ) as Promise<T>
+      return $api.internal.getOperation(workspaceId, baseId, clean as any, requestParams) as Promise<T>
     }
     const { operation, ...query } = clean
     return getBatcher($api, workspaceId, baseId).call({ operation, query })
@@ -242,13 +234,7 @@ export function useInternalBatch() {
     const queued = shouldBatch(workspaceId, baseId, params, requestParams)
     const clean = stripBatchMarker(params)
     if (!queued) {
-      return $api.internal.postOperation(
-        workspaceId,
-        baseId,
-        clean as any,
-        data,
-        requestParams,
-      ) as Promise<T>
+      return $api.internal.postOperation(workspaceId, baseId, clean as any, data, requestParams) as Promise<T>
     }
     const { operation, ...query } = clean
     return getBatcher($api, workspaceId, baseId).call({

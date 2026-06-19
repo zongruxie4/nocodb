@@ -8,9 +8,10 @@ import {
   ViewTypes,
 } from 'nocodb-sdk';
 import { validatePayload } from 'src/helpers';
-import { NcApiVersion } from 'nocodb-sdk';
+import type { NcApiVersion } from 'nocodb-sdk';
 import type { NcRequest } from 'nocodb-sdk';
 import type { LinkToAnotherRecordColumn } from '~/models';
+import type { LtarDisplayValueContext } from '~/helpers/ltarDisplayValueResolver';
 import { DBQueryClient } from '~/dbQueryClient';
 import { NcContext } from '~/interface/config';
 import { validateV1V2DataPayloadLimit } from '~/helpers/dataHelpers';
@@ -29,7 +30,6 @@ import {
   getLtarDisplayValueContext,
   resolveLtarDisplayValuesToPks,
 } from '~/helpers/ltarDisplayValueResolver';
-import type { LtarDisplayValueContext } from '~/helpers/ltarDisplayValueResolver';
 
 @Injectable()
 export class DataTableService {

@@ -349,12 +349,11 @@ export function useViewFilters(
         const childFilterPromise = internalGet(apiWorkspaceId.value!, apiBaseId.value!, {
           operation: 'filterChildrenList',
           filterId: filter.id,
+        }).then((response) => {
+          const childFilters = (response.list as ColumnFilterType[]).sort((a, b) => ncArrSortCallback(a, b, { key: 'order' }))
+          allChildFilters.push(...childFilters)
+          return loadAllChildFilters(childFilters)
         })
-          .then((response) => {
-            const childFilters = (response.list as ColumnFilterType[]).sort((a, b) => ncArrSortCallback(a, b, { key: 'order' }))
-            allChildFilters.push(...childFilters)
-            return loadAllChildFilters(childFilters)
-          })
         promises.push(childFilterPromise)
       }
     }

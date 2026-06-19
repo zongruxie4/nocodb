@@ -18,7 +18,7 @@ const [useProvideViewAggregate, useViewAggregate] = useInjectionState(
     where?: ComputedRef<string | undefined>,
     reloadVisibleDataHook?: EventHook<void>,
   ) => {
-    const { $api: api, $eventBus } = useNuxtApp()
+    const { $eventBus } = useNuxtApp()
 
     const { internalGet } = useInternalBatch()
 

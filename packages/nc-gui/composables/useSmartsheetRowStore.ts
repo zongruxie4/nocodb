@@ -44,8 +44,7 @@ const [useProvideSmartsheetRowStore, useSmartsheetRowStore] = useInjectionState(
     // Drives the expanded form's "modified" state for relational fields.
     const hasLtarChanges = computed(() => {
       const ltarState = currentRow.value?.rowMeta?.ltarState ?? {}
-      const hasEntries = (s: Record<string, any>) =>
-        Object.values(s).some((v) => (Array.isArray(v) ? v.length > 0 : !!v))
+      const hasEntries = (s: Record<string, any>) => Object.values(s).some((v) => (Array.isArray(v) ? v.length > 0 : !!v))
       return pendingLtarOps.value.length > 0 || hasEntries(ltarState)
     })
 

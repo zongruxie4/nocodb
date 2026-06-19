@@ -29,7 +29,7 @@ const [useProvideViewGroupBy, useViewGroupBy] = useInjectionState(
     const { t } = useI18n()
 
     const { api } = useApi()
-    const { $api } = useNuxtApp()
+
     const { internalGet } = useInternalBatch()
 
     const { appInfo } = useGlobal()

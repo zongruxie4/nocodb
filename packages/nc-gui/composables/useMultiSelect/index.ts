@@ -1177,14 +1177,10 @@ export function useMultiSelect(
 
           if (newColsNeeded > 0) {
             const columnsHash = (
-              await internalGet(
-                (meta.value as any)?.fk_workspace_id ?? base.value!.fk_workspace_id!,
-                meta.value!.base_id!,
-                {
-                  operation: 'columnsHash',
-                  tableId: meta.value?.id,
-                },
-              )
+              await internalGet((meta.value as any)?.fk_workspace_id ?? base.value!.fk_workspace_id!, meta.value!.base_id!, {
+                operation: 'columnsHash',
+                tableId: meta.value?.id,
+              })
             ).hash
             const columnsLength = meta.value?.columns?.length || 0
 

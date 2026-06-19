@@ -728,6 +728,18 @@ async function saveHooks() {
     bundledFilters = []
   }
 
+  // Resolve the persisted `condition` flag from the actual filter set rather than tracking it live
+  // off the editor (which raced with its async loadFilters and flipped the toggle off mid-edit —
+  // flaky webhook.spec "Conditional webhooks"). A hook triggers conditionally iff it actually has
+  // filters: when conditions aren't supported, or the toggle is on but no filters remain, persist
+  // condition=false (this is what webhook.spec deleteCondition relies on — removing the last filter
+  // makes the hook fire unconditionally again).
+  const effectiveCondition = !isConditionSupport.value
+    ? false
+    : bundledFilters !== undefined
+    ? bundledFilters.length > 0
+    : hookRef.condition
+
   const HOOK_API_FIELDS = [
     'title',
     'description',

@@ -90,7 +90,11 @@ export async function clearSingleQueryCacheForReferencingModels(
   // the renamed table's own cache is cleared by the caller
   referencingModelIds.delete(modelId);
 
-  await invalidateSingleQueryCacheForModels(context, [...referencingModelIds], ncMeta);
+  await invalidateSingleQueryCacheForModels(
+    context,
+    [...referencingModelIds],
+    ncMeta,
+  );
 }
 
 /**
@@ -151,7 +155,11 @@ export async function clearSingleQueryCacheForRenamedColumnReferences(
   // remove self
   referencingModelIds.delete(oldCol.fk_model_id);
 
-  await invalidateSingleQueryCacheForModels(context, [...referencingModelIds], ncMeta);
+  await invalidateSingleQueryCacheForModels(
+    context,
+    [...referencingModelIds],
+    ncMeta,
+  );
 }
 
 /**

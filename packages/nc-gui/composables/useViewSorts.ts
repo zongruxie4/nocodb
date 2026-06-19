@@ -203,8 +203,7 @@ export function useViewSorts(view: Ref<ViewType | undefined>, reloadData?: () =>
   // Keep the list ordered by `order` — a realtime reorder (incl. undo/redo,
   // which only changes the `order` field) must re-sort, otherwise the visible
   // order stays stale until a reload.
-  const sortByOrder = (list: SortType[]) =>
-    [...list].sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity))
+  const sortByOrder = (list: SortType[]) => [...list].sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity))
 
   const evtListener = (evt: string, payload: any) => {
     if (payload.fk_view_id !== view.value?.id) return

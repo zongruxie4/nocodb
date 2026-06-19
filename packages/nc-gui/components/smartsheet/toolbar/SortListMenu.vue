@@ -213,9 +213,7 @@ async function onSortMove(event: { moved?: { newIndex: number; oldIndex: number 
   // slots occupied by the active level, leaving other levels untouched.
   if (isList.value && isListConfigured.value && listViewStore?.selectedLevelId.value) {
     const queue = [...reordered]
-    sorts.value = sorts.value.map((s) =>
-      s.fk_level_id === listViewStore!.selectedLevelId.value ? queue.shift()! : s,
-    )
+    sorts.value = sorts.value.map((s) => (s.fk_level_id === listViewStore!.selectedLevelId.value ? queue.shift()! : s))
   } else {
     sorts.value = reordered
   }

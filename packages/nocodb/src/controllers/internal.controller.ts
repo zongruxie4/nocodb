@@ -305,7 +305,9 @@ export class InternalController {
       NcError.badRequest('`operations` array is required');
     }
     if (ops.length > INTERNAL_BATCH_MAX_SIZE) {
-      NcError.badRequest(`Batch too large (max ${INTERNAL_BATCH_MAX_SIZE} operations)`);
+      NcError.badRequest(
+        `Batch too large (max ${INTERNAL_BATCH_MAX_SIZE} operations)`,
+      );
     }
 
     for (const op of ops) {
