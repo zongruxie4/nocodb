@@ -78,6 +78,13 @@ const [useProvideExpandedFormStore, useExpandedFormStore] = useInjectionState(
         : ({ row: {}, oldRow: {}, rowMeta: {} } as Row),
     )
 
+    // Ensure `.row` is always a plain object — a caller passing a non-object
+    // (or a non-object surviving from a prior load) would make cell edits throw
+    // `can't assign to property ... not an object` (#9365).
+    if (!row.value.row || typeof row.value.row !== 'object' || Array.isArray(row.value.row)) {
+      row.value.row = {}
+    }
+
     if (row.value?.rowMeta?.fromExpandedForm) {
       row.value.rowMeta.fromExpandedForm = true
     }
@@ -516,6 +523,13 @@ const [useProvideExpandedFormStore, useExpandedFormStore] = useInjectionState(
         } else {
           message.error(`${await extractSdkResponseErrorMsg(err)}`)
         }
+      }
+
+      // Guard against a non-object response body (e.g. an empty 200/204 yields
+      // "" from the HTTP client). Assigning it to `row.value.row` would later
+      // make cell edits throw `can't assign to property ... not an object` (#9365).
+      if (!record || typeof record !== 'object' || Array.isArray(record)) {
+        record = {}
       }
 
       try {
