@@ -75,7 +75,8 @@ function sanitizeForHash(value: any, seen = new WeakSet()): any {
   if (value instanceof Map) {
     return [...value.entries()].map(([k, v]) => [k, sanitizeForHash(v, seen)]);
   }
-  if (value instanceof Set) return [...value].map((v) => sanitizeForHash(v, seen));
+  if (value instanceof Set)
+    return [...value].map((v) => sanitizeForHash(v, seen));
   const out: Record<string, any> = {};
   for (const [k, v] of Object.entries(value)) out[k] = sanitizeForHash(v, seen);
   return out;

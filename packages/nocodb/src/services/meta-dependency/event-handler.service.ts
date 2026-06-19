@@ -1,10 +1,11 @@
-import { Inject, Injectable, Logger, OnModuleInit, Type } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import {
   META_DEPENDENCY_MODULE_PROVIDER_KEY,
   type MetaDependencyEventRequest,
   type MetaEventHandler,
 } from './types';
+import type { OnModuleInit, Type } from '@nestjs/common';
 import type { MetaEventType, NcContext } from 'nocodb-sdk';
 import type { MetaService } from '~/meta/meta.service';
 import Noco from '~/Noco';

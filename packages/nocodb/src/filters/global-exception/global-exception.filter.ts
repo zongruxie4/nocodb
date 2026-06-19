@@ -6,7 +6,6 @@ import {
   NcApiVersion,
   NcErrorType,
   NcSDKError,
-  NcSDKErrorV2,
   BadRequest as SdkBadRequest,
 } from 'nocodb-sdk';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
