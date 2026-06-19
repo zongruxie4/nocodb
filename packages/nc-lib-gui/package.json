@@ -27,6 +27,6 @@
     "url": "https://github.com/nocodb/nocodb/issues"
   },
   "dependencies": {
-    "express": "^4.17.1"
+    "express": "^5.1.0"
   }
 }
