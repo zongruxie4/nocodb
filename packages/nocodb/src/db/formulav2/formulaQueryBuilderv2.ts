@@ -17,6 +17,11 @@ import {
   binaryExpressionBuilder,
   callExpressionBuilder,
 } from './parsed-tree-builder';
+import {
+  formulaOutputsRawJson,
+  getFormulaOutputMaxLength,
+  wrapFormulaWithMaxLength,
+} from './formula-query-builder.helpers';
 import type { ClientType, LiteralNode } from 'nocodb-sdk';
 import type { IBaseModelSqlV2 } from '~/db/IBaseModelSqlV2';
 import type { BarcodeColumn, Model, QrCodeColumn, User } from '~/models';
@@ -471,7 +476,7 @@ async function _formulaQueryBuilder(params: FormulaQueryBuilderBaseParams) {
     }
   };
   const builder = (await fn(tree)).builder;
-  return { builder };
+  return { builder, parsedTree: tree };
 }
 
 export default async function formulaQueryBuilderv2({
@@ -564,6 +569,30 @@ export default async function formulaQueryBuilderv2({
         `The generated query for ${columnInfo.title} exceeds the maximum allowed length. Try simplifying the formula by reducing the number of referenced fields, lookup chains, or nested formula references.`,
       );
     }
+
+    // Cap the rendered length of string-typed formula output at the database
+    // level. Formula functions can produce arbitrarily large strings at
+    // execution time (the query text itself stays short), which can crash the
+    // Node process with ERR_STRING_TOO_LONG when the driver materializes the
+    // value. Wrapping the final expression in a SUBSTR enforces an upper limit
+    // per cell across all database platforms. Applied only at the outermost
+    // formula (nested formula references go through `_formulaQueryBuilder`
+    // directly), and only for string output to avoid altering numeric/date
+    // typing. JSON-producing formulas (e.g. JSON_EXTRACT) are skipped — they
+    // come back as jsonb whose representation a text cast would corrupt, and
+    // they can't grow unbounded since they only read already-stored JSON.
+    if (
+      qb?.parsedTree?.dataType === FormulaDataTypes.STRING &&
+      qb.builder &&
+      !formulaOutputsRawJson(qb.parsedTree)
+    ) {
+      qb.builder = wrapFormulaWithMaxLength({
+        knex,
+        builder: qb.builder,
+        maxLength: getFormulaOutputMaxLength(),
+      });
+    }
+
     if (!validateFormula) return qb;
 
     // Short-circuit if a previous dry-run already failed for this base model,
