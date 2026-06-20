@@ -27,6 +27,7 @@ import { NcError } from '~/helpers/catchError';
 import getAst from '~/helpers/getAst';
 import { PagedResponseImpl } from '~/helpers/PagedResponse';
 import { getColumnByIdOrName } from '~/helpers/dataHelpers';
+import { restrictNestedLinkQueryForColumn } from '~/helpers/nestedLinkQueryHelpers';
 import NcConnectionMgrv2 from '~/utils/common/NcConnectionMgrv2';
 import { replaceDynamicFieldWithValue } from '~/helpers/dbHelpers';
 import { Filter } from '~/models';
@@ -1323,6 +1324,14 @@ export class PublicDatasService {
       NcError.recordNotFound(param.rowId);
     }
 
+    // Strip caller-supplied where/sort references to columns the link doesn't
+    // expose (cross-base / visibility-limited related tables). The shared-view
+    // /mm/ fetch is `pkAndPvOnly`-restricted, so an unsanitized predicate on a
+    // hidden related column is the same one-bit oracle the authenticated paths
+    // close. Mutates `param.query`, which both the data fetch and the count
+    // read from.
+    await restrictNestedLinkQueryForColumn(context, column, param.query);
+
     const key = `List`;
     const requestObj: any = {
       [key]: 1,
@@ -1415,6 +1424,14 @@ export class PublicDatasService {
     if (!parentRow) {
       NcError.recordNotFound(param.rowId);
     }
+
+    // Strip caller-supplied where/sort references to columns the link doesn't
+    // expose (cross-base / visibility-limited related tables). The shared-view
+    // /hm/ fetch is `pkAndPvOnly`-restricted, so an unsanitized predicate on a
+    // hidden related column is the same one-bit oracle the authenticated paths
+    // close. Mutates `param.query`, which both the data fetch and the count
+    // read from.
+    await restrictNestedLinkQueryForColumn(context, column, param.query);
 
     const key = `List`;
     const requestObj: any = {

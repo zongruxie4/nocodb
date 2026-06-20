@@ -32,6 +32,11 @@ export const INTERNAL_BATCH_MAX_SIZE = 25;
  * Deliberately excluded categories — `tableGet`, `baseGet`, `tableList`
  * (navigation-critical, want immediate dispatch), `bulkAggregate`
  * (heavy responses), and anything that mutates state.
+ *
+ * `tableGet` has one sanctioned exception: `useMetas.getMeta` passes
+ * `_batch: true` per-call when the requested table is NOT the active table
+ * (the related-table meta fan-out for Links/Lookup columns). Navigation
+ * fetches — always for the active table — keep immediate dispatch.
  */
 export const BATCHABLE_INTERNAL_OPERATIONS: ReadonlySet<string> = new Set([
   // View metadata fan-out (5+ calls on every view mount)

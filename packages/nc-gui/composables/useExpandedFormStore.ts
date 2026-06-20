@@ -55,7 +55,7 @@ const [useProvideExpandedFormStore, useExpandedFormStore] = useInjectionState(
 
     const isSaving = ref(false)
 
-    const changedColumns = ref<Set<string>>(new Set<string>())
+    const changedColumns = shallowRef<Set<string>>(new Set<string>())
 
     const localOnlyChanges = ref<Record<string, any>>({})
 

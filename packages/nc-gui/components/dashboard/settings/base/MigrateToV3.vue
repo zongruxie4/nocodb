@@ -28,7 +28,7 @@ const migrateToV3 = async () => {
       version: BaseVersion.V3,
     })
 
-    message.success(t('msg.success.baseUpgradedToV3'))
+    message.toast(t('msg.success.baseUpgradedToV3'))
 
     // Reload the base after migration
     await basesStore.loadProject(baseId.value, true)

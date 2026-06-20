@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 
 /**
- * CE stub — white-label is an EE feature, so the open-source build serves the
+ * CE stub — white-label is an EE feature, so the community build serves the
  * SPA shell unchanged. The EE override (`src/ee/helpers/brandingHtml.ts`)
  * rewrites the document <head> (title, og:*, twitter:*, theme-color, favicon)
  * from the instance white-label config so link unfurlers / crawlers — which

@@ -278,6 +278,12 @@ export class OauthTokenService {
   }): Promise<TokenResponse> {
     const { refreshToken, clientId, clientSecret } = params;
 
+    // TODO: refresh-grant failures below reject via NcError.badRequest, while the
+    // authorization-code grant throws RFC-6749 `invalid_grant: …` codes. Align the
+    // whole refresh flow on RFC-6749 error codes in a dedicated change (kept out of
+    // the GHSA-353r advisory fix to avoid altering response shapes here).
+    // https://github.com/nocodb/nocohub/pull/9337#discussion_r3435641193
+
     // Get token by refresh token
     const tokenRecord = await OAuthToken.getByRefreshToken(refreshToken);
     if (!tokenRecord) {
@@ -329,8 +335,17 @@ export class OauthTokenService {
     // Rotate refresh tokens for security
     const newRefreshToken = randomBytes(64).toString('base64url');
 
-    // Revoke old token
-    await OAuthToken.revoke(tokenRecord.id);
+    // Atomically revoke the presented refresh token, gating issuance of the new
+    // chain. This compare-and-swap is the single-use guard: two concurrent
+    // refreshes presenting the same token both pass the is_revoked check above,
+    // but only one wins revokeIfActive — the loser is rejected here instead of
+    // minting a second valid token chain. Done after token generation so a
+    // generateAccessToken failure does not burn the still-valid refresh token
+    // (GHSA-353r).
+    const revoked = await OAuthToken.revokeIfActive(tokenRecord.id);
+    if (!revoked) {
+      NcError.badRequest('Refresh token has been revoked');
+    }
 
     // Create new token record
     await OAuthToken.insert({

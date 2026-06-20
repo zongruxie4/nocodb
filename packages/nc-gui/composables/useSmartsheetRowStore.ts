@@ -1,8 +1,9 @@
+import type { ShallowRef } from 'vue'
 import type { MaybeRef } from '@vueuse/core'
 import type { PendingLtarOp } from '~/utils/ltarDeferredOps'
 
 const [useProvideSmartsheetRowStore, useSmartsheetRowStore] = useInjectionState(
-  (row: MaybeRef<Row>, changedColumns: Ref<Set<string>> = ref(new Set<string>())) => {
+  (row: MaybeRef<Row>, changedColumns: ShallowRef<Set<string>> = shallowRef(new Set<string>())) => {
     const currentRow = ref(row)
 
     // state

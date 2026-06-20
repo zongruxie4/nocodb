@@ -78,7 +78,10 @@ import { cleanCommandPaletteCache } from '~/helpers/commandPaletteHelpers';
 import { isEE } from '~/utils';
 import { cleanBaseSchemaCacheForBase } from '~/helpers/scriptHelper';
 import NocoSocket from '~/socket/NocoSocket';
-import { SINGLE_QUERY_DEFAULT_VIEW } from '~/dbQueryClient/cross-db-utils/single-query-cache';
+import {
+  SINGLE_QUERY_DEFAULT_VIEW,
+  singleQueryCacheKey,
+} from '~/dbQueryClient/cross-db-utils/single-query-cache';
 
 const { v4: uuidv4 } = require('uuid');
 
@@ -2623,22 +2626,18 @@ export default class View implements ViewType {
       );
     }
 
-    // Every singleQuery write registers its cacheKey under
-    // `singleQuery:{modelId}:{viewIdOrDefault}:list`, so a single deepDel
-    // wipes every entry for the view regardless of suffix (`:queries`,
-    // `:count`, `:read:N`, `:ltar`, `:deleted`, `:primaries`, `:rls:*`,
-    // `:dvc:*`, and any combination).
+    // Every singleQuery plan for a (model, view) is a FIELD of a single
+    // `singleQuery_v4:{modelId}:{viewIdOrDefault}` HASH, so one `del` wipes
+    // every variant for the view (`:queries`, `:count`, `:read:N`, `:ltar`,
+    // `:deleted`, `:primaries`, `:rls:*`, `:dvc:*`, and any combination)
+    // atomically. There is no separate index to expire or race against, so an
+    // entry can never be orphaned and replay stale SQL after a schema change.
     for (const view of viewsList) {
-      await NocoCache.deepDel(
-        context,
-        `${CacheScope.SINGLE_QUERY}:${modelId}:${view.id}:list`,
-        CacheDelDirection.PARENT_TO_CHILD,
-      );
+      await NocoCache.del(context, singleQueryCacheKey(modelId, view.id));
     }
-    await NocoCache.deepDel(
+    await NocoCache.del(
       context,
-      `${CacheScope.SINGLE_QUERY}:${modelId}:${SINGLE_QUERY_DEFAULT_VIEW}:list`,
-      CacheDelDirection.PARENT_TO_CHILD,
+      singleQueryCacheKey(modelId, SINGLE_QUERY_DEFAULT_VIEW),
     );
   }
 

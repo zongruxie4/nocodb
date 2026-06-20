@@ -511,6 +511,7 @@ if (isKanban.value) {
         changedColumns.value.add(k)
       }
     }
+    triggerRef(changedColumns)
   }
 }
 provide(IsExpandedFormOpenInj, isExpanded)

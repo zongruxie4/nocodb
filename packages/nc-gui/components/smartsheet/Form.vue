@@ -2036,7 +2036,7 @@ const { message: templatedMessage } = useTemplatedMessage(
 
                     <div v-if="!parseProp(formViewData?.meta).hide_branding" class="px-8 lg:px-12">
                       <a-divider class="!my-8" />
-                      <!-- Nocodb Branding  -->
+                      <!-- NocoDB Branding  -->
                       <div class="inline-block">
                         <GeneralFormBranding @click.stop />
                       </div>

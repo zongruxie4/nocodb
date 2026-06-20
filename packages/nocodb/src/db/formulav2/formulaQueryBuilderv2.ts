@@ -619,9 +619,10 @@ export default async function formulaQueryBuilderv2({
 
     // Mark formula error if formula validation is invoked
     // or if a circular reference error occurs and a column is provided
-    // BUT skip marking for transient errors
+    // BUT skip marking for transient errors (and the transient-induced
+    // dry-run short-circuit, see skipMarkingColumn above)
     if (
-      !isTransient &&
+      !skipMarkingColumn &&
       (validateFormula ||
         (column?.id &&
           e instanceof NcBaseErrorv2 &&

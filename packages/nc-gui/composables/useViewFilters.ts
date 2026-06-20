@@ -705,7 +705,7 @@ export function useViewFilters(
       lastFilterIndex = i
     }
 
-    if (!view.value && !linkColId?.value && !widgetId?.value && !buttonColId?.value) return
+    if (!view.value && !linkColId?.value && !widgetId?.value && !buttonColId?.value && !isRlsPolicy) return
 
     try {
       if (nestedMode.value || isWorkflow) {
