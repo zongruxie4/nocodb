@@ -40,7 +40,8 @@
                   "form",
                   "map",
                   "timeline",
-                  "gantt"
+                  "gantt",
+                  "list"
                 ],
                 "description": "Type of the view."
               },

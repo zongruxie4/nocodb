@@ -119,6 +119,7 @@ export class SortsV3Service {
       sort: SortCreateV3Type;
       req: NcRequest;
       viewWebhookManager?: ViewWebhookManager;
+      fkLevelId?: string;
     },
     ncMeta = Noco.ncMeta,
   ) {
@@ -157,11 +158,16 @@ export class SortsV3Service {
       );
     }
 
+    const builtSort = this.revBuilder().build(param.sort) as SortReqType;
+    if (param.fkLevelId) {
+      (builtSort as any).fk_level_id = param.fkLevelId;
+    }
     const sort = await this.sortsService.sortCreate(
       context,
       {
-        ...param,
-        sort: this.revBuilder().build(param.sort) as SortReqType,
+        viewId: param.viewId,
+        sort: builtSort,
+        req: param.req,
         viewWebhookManager: param.viewWebhookManager,
       },
       ncMeta,
@@ -177,5 +183,17 @@ export class SortsV3Service {
     return sortBuilder().build(
       await Sort.list(context, { viewId: param.viewId }, ncMeta),
     ) as SortType[];
+  }
+
+  /** Sorts scoped to a single list level (`fk_level_id`). */
+  async sortListByLevel(
+    context: NcContext,
+    param: { viewId: string; levelId: string },
+    ncMeta = Noco.ncMeta,
+  ) {
+    const sorts = (
+      await Sort.list(context, { viewId: param.viewId }, ncMeta)
+    ).filter((s) => (s as any).fk_level_id === param.levelId);
+    return sortBuilder().build(sorts) as SortType[];
   }
 }
