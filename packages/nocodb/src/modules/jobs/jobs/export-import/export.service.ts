@@ -39,6 +39,7 @@ import {
   generateBaseIdMap,
   getEntityIdentifier,
 } from '~/helpers/exportImportHelpers';
+import { defaultLimitConfig } from '~/helpers/extractLimitAndOffset';
 import NcPluginMgrv2 from '~/helpers/NcPluginMgrv2';
 import { RowColorViewHelpers } from '~/helpers/rowColorViewHelpers';
 import {
@@ -1520,6 +1521,7 @@ export class ExportService {
         limit,
         offset,
         fields,
+        nested: this.buildNestedLinkLimitQuery(model),
         filterArrJson: param?.filterArrJson,
         sortArrJson: param?.sortArrJson,
       },
@@ -1608,6 +1610,7 @@ export class ExportService {
         limit,
         offset,
         fields,
+        nested: this.buildNestedLinkLimitQuery(model),
         filterArrJson: param?.filterArrJson,
         sortArrJson: param?.sortArrJson,
       },
@@ -1701,6 +1704,24 @@ export class ExportService {
     return unparse(rows, { header: opts.header, delimiter: opts.delimiter });
   }
 
+  // Linked (LTAR/Links) cells must export every linked record, not just the
+  // default nested page of 25 records (issue #9347). Build a per-relation-column
+  // nested query that raises the limit to the system maximum; getListArgs clamps
+  // it to defaultLimitConfig.limitMax, matching the V3 API's nested-record
+  // ceiling. Applied to both the optimized (single-query) and nocoExecute read
+  // paths since both derive the nested LTAR limit from `query.nested[col].limit`.
+  private buildNestedLinkLimitQuery(
+    model: Model,
+  ): Record<string, { limit: number }> {
+    const nested: Record<string, { limit: number }> = {};
+    for (const column of model.columns) {
+      if (isLinksOrLTAR(column)) {
+        nested[column.title] = { limit: defaultLimitConfig.limitMax };
+      }
+    }
+    return nested;
+  }
+
   async recursiveRead(
     context: NcContext,
     formatter: (data: any) => { data: any } | Promise<{ data: any }>,
@@ -1728,6 +1749,7 @@ export class ExportService {
             limit,
             offset,
             fields,
+            nested: this.buildNestedLinkLimitQuery(model),
             filterArrJson: param?.filterArrJson,
             sortArrJson: param?.sortArrJson,
           },
