@@ -587,9 +587,9 @@ const onDeleteColumn = () => {
       :enabled="!!fieldAlterReason || !isColumnEditAllowed"
       :is-sql-view="isSqlView"
     >
-      <template #title>
+      <template v-if="fieldAlterReason || isSyncedReadonlyField" #title>
         <template v-if="fieldAlterReason">{{ $t(fieldAlterReason) }}</template>
-        <template v-else-if="isSyncedReadonlyField">
+        <template v-else>
           <div class="max-w-50">
             {{ $t('tooltip.schemaChangeDisabledFormSyncedTableField') }}
           </div>
@@ -933,9 +933,9 @@ const onDeleteColumn = () => {
       :enabled="!!fieldDeleteReason || !isColumnUpdateAllowed"
       :is-sql-view="isSqlView"
     >
-      <template #title>
+      <template v-if="fieldDeleteReason || isSyncedReadonlyField" #title>
         <template v-if="fieldDeleteReason">{{ $t(fieldDeleteReason) }}</template>
-        <template v-else-if="isSyncedReadonlyField">
+        <template v-else>
           <div class="max-w-50">
             {{ $t('tooltip.deleteFieldIsRestrictedForSyncedTableField') }}
           </div>

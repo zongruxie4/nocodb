@@ -287,7 +287,7 @@ const onPermissionsSaved = () => {
       placement="right"
     >
       <template #title>
-        <template v-if="fieldDeleteReason">{{ $t(fieldDeleteReason) }}</template>
+        <template v-if="fieldDeleteReason">{{ t(fieldDeleteReason) }}</template>
         <template v-else>{{ t('tooltip.displayValueFieldExcluded') }}</template>
       </template>
       <NcMenuItem danger :disabled="!!fieldDeleteReason" data-testid="nc-multi-field-delete" @click="onDelete">
