@@ -3,7 +3,7 @@ import { PlanFeatureTypes, PlanTitles, type TableType, ViewTypes, viewTypeAlias 
 
 const { $e } = useNuxtApp()
 
-const { isUIAllowed, orgRoles, workspaceRoles } = useRoles()
+const { isUIAllowed, orgRoles, workspaceRoles, sandboxRestrictionReason } = useRoles()
 
 const { openedProject } = storeToRefs(useBases())
 
@@ -132,6 +132,15 @@ const hasTableCreateAccess = computed(() => {
   if (!base.value || !isBaseHomePage.value) return true
 
   return isUIAllowed('tableCreate', {
+    roles: base.value?.project_role || base.value.workspace_role,
+    source: base.value?.sources?.[0],
+  })
+})
+
+const tableCreateReason = computed(() => {
+  if (!base.value || !isBaseHomePage.value) return null
+
+  return sandboxRestrictionReason('tableCreate', {
     roles: base.value?.project_role || base.value.workspace_role,
     source: base.value?.sources?.[0],
   })
@@ -456,16 +465,18 @@ const hasDocumentCreateAccess = computed(() => {
                 ? $t('tooltip.switchToDataTab', { type: $t('objects.table').toLowerCase() })
                 : !isBaseHomePage
                 ? $t('tooltip.navigateToBaseToCreateTable')
+                : tableCreateReason
+                ? $t(tableCreateReason)
                 : !hasTableCreateAccess
                 ? $t('tooltip.youDontHaveAccessToCreateNewTable')
                 : ''
             "
-            :disabled="isDataTab && isBaseHomePage && hasTableCreateAccess"
+            :disabled="isDataTab && isBaseHomePage && hasTableCreateAccess && !tableCreateReason"
             placement="right"
           >
             <NcMenuItem
               data-testid="mini-sidebar-table-create"
-              :disabled="!isDataTab || !isBaseHomePage || !hasTableCreateAccess"
+              :disabled="!isDataTab || !isBaseHomePage || !hasTableCreateAccess || !!tableCreateReason"
               @click="openTableCreateDialog"
             >
               <GeneralIcon icon="table" />
