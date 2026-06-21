@@ -7,6 +7,10 @@ const up = async (knex: Knex) => {
     table.string('merge_state', 20).notNullable().defaultTo('idle');
     table.text('merge_error');
     table.timestamp('merge_started_at');
+    // One sandbox per production base — enforce at the DB so two concurrent
+    // sandboxCreate calls cannot both pass the in-app "already has a sandbox"
+    // check and create duplicate sandboxes for the same base.
+    table.unique(['production_base_id'], 'nc_sandboxes_production_base_unique');
   });
 
   // Renumber any duplicate seq per sandbox before adding the unique constraint.
@@ -40,6 +44,10 @@ const down = async (knex: Knex) => {
     table.dropUnique(['fk_sandbox_id', 'seq'], 'nc_scl_sandbox_seq_unique');
   });
   await knex.schema.alterTable(MetaTable.SANDBOXES, (table) => {
+    table.dropUnique(
+      ['production_base_id'],
+      'nc_sandboxes_production_base_unique',
+    );
     table.dropColumn('merge_state');
     table.dropColumn('merge_error');
     table.dropColumn('merge_started_at');
