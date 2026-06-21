@@ -40,7 +40,6 @@ import { TelemetryService } from '~/services/telemetry.service';
 import { DuplicateModelUtils } from '~/utils/duplicate-model.utils';
 import { hasTableVisibilityAccess } from '~/helpers/tableHelpers';
 import { Untraced } from '~/decorators/trace-command.decorator';
-import { clearSandboxCreatingState } from '~/helpers/sandboxGuards';
 
 @Injectable()
 export class DuplicateProcessor {
@@ -311,13 +310,6 @@ export class DuplicateProcessor {
         req,
         context: targetContext,
       });
-
-      // Sandbox provisioning finishes here: a sandbox base is duplicated from
-      // its production base, so clear the 'creating' lifecycle state → 'idle'
-      // now that the copy succeeded. No-op (CE stub / CAS guard) otherwise.
-      if (targetBase?.is_sandbox) {
-        await clearSandboxCreatingState(targetContext, targetBase.id);
-      }
     } catch (err) {
       if (targetBase?.id) {
         await this.projectsService.baseSoftDelete(targetContext, {
