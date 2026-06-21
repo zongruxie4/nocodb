@@ -7,9 +7,33 @@ const up = async (knex: Knex) => {
     table.string('merge_state', 20).notNullable().defaultTo('idle');
     table.text('merge_error');
     table.timestamp('merge_started_at');
-    // One sandbox per production base — enforce at the DB so two concurrent
-    // sandboxCreate calls cannot both pass the in-app "already has a sandbox"
-    // check and create duplicate sandboxes for the same base.
+  });
+
+  // One sandbox per production base — enforce at the DB so two concurrent
+  // sandboxCreate calls cannot both pass the in-app "already has a sandbox"
+  // check and create duplicate sandboxes for the same base. Before adding the
+  // constraint, fail loud with an actionable message if an instance already
+  // holds duplicates from that pre-DB-constraint race window — a clear abort
+  // beats a cryptic boot-blocking constraint error, and we never silently drop
+  // a sandbox row (it may hold unmerged work). Multiple NULLs are fine (Postgres
+  // treats them as distinct), so only real duplicates are flagged.
+  const duplicateProductionBases = await knex(MetaTable.SANDBOXES)
+    .select('production_base_id')
+    .whereNotNull('production_base_id')
+    .groupBy('production_base_id')
+    .havingRaw('count(*) > 1');
+  if (duplicateProductionBases.length > 0) {
+    const ids = duplicateProductionBases
+      .map((r) => r.production_base_id)
+      .join(', ');
+    throw new Error(
+      `${MetaTable.SANDBOXES}: cannot add unique(production_base_id) — multiple ` +
+        `sandbox rows exist for production base(s): ${ids}. Keep one sandbox per ` +
+        `listed base (remove the extras), then re-run the migration.`,
+    );
+  }
+
+  await knex.schema.alterTable(MetaTable.SANDBOXES, (table) => {
     table.unique(['production_base_id'], 'nc_sandboxes_production_base_unique');
   });
 
