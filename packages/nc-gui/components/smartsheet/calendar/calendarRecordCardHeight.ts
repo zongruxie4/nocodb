@@ -7,11 +7,13 @@
 // every column they span, so they never overlap and stay aligned across the
 // columns they cover.
 
-/** Height of a single-field card — matches the legacy `h-7` (28px) card. */
-export const CALENDAR_CARD_BASE_HEIGHT = 28
+// Height of a single-field card: one 20px line + 8px vertical padding + 2px
+// border. Each extra field adds a 20px line plus the 2px inter-field gap, so the
+// card always fully contains its fields (no half-cut last line).
+export const CALENDAR_CARD_BASE_HEIGHT = 30
 
-/** Extra height added per additional visible field. */
-export const CALENDAR_CARD_FIELD_HEIGHT = 20
+/** Extra height per additional visible field (line + inter-field gap). */
+export const CALENDAR_CARD_FIELD_HEIGHT = 22
 
 /** Max fields a card grows to show before clipping (+ click-to-expand). */
 export const CALENDAR_CARD_MAX_FIELDS = 5
@@ -23,7 +25,7 @@ export const CALENDAR_CARD_ROW_GAP = 8
  * Natural card height for a given number of non-empty visible fields.
  * Always shows at least one line; capped at CALENDAR_CARD_MAX_FIELDS.
  *
- * count=1 → 28px (unchanged from legacy), 2 → 48px, 3+ → 68px.
+ * count=1 → 30px, 2 → 52px, 3 → 74px, 5 (cap) → 118px.
  */
 export function cardHeightForFieldCount(count: number): number {
   const fields = Math.max(1, Math.min(Math.floor(count) || 1, CALENDAR_CARD_MAX_FIELDS))

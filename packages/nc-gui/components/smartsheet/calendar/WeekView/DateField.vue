@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import dayjs from 'dayjs'
 import type { ColumnType } from 'nocodb-sdk'
-import { cardHeightForFieldCount, computeColumnPackedLayout } from '../calendarRecordCardHeight'
+import { CALENDAR_CARD_MAX_FIELDS, cardHeightForFieldCount, computeColumnPackedLayout } from '../calendarRecordCardHeight'
 import type { Row } from '~/lib/types'
 
 const emits = defineEmits(['expandRecord', 'newRecord'])
@@ -58,6 +58,13 @@ const fieldStyles = computed(() => {
 
 const getFieldStyle = (field: ColumnType) => {
   return fieldStyles.value.get(field.id)
+}
+
+// Non-empty visible fields a card actually shows, capped so the card never
+// renders a partially-clipped (half-cut) line. The card height is derived from
+// the same list, so what's rendered always fits.
+const cardFields = (record: Row) => {
+  return (fields.value ?? []).filter((f) => f && !isRowEmpty(record, f)).slice(0, CALENDAR_CARD_MAX_FIELDS)
 }
 
 // Calculate the dates of the week
@@ -207,8 +214,7 @@ const calendarData = computed(() => {
 
       // Card height grows with the number of non-empty visible fields (capped),
       // so week-view cards can show several fields over multiple lines.
-      const visibleFieldCount = (fields.value ?? []).filter(Boolean).filter((f) => !isRowEmpty(record, f!)).length
-      const cardHeight = cardHeightForFieldCount(visibleFieldCount)
+      const cardHeight = cardHeightForFieldCount(cardFields(record).length)
 
       recordsInRange.push({
         ...record,
@@ -681,9 +687,8 @@ const addRecord = (date: dayjs.Dayjs) => {
               @dblclick.stop="emits('expandRecord', record)"
               @resize-start="onResizeStart"
             >
-              <template v-for="(field, index) in fields" :key="index">
+              <template v-for="(field, index) in cardFields(record)" :key="index">
                 <LazySmartsheetPlainCell
-                  v-if="!isRowEmpty(record, field!)"
                   v-model="record.row[field!.title!]"
                   class="text-xs"
                   :bold="getFieldStyle(field).bold"

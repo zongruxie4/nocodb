@@ -2,20 +2,20 @@ import { cardHeightForFieldCount, computeColumnPackedLayout } from '~/components
 
 describe('cardHeightForFieldCount', () => {
   it('shows at least one line', () => {
-    expect(cardHeightForFieldCount(0)).toBe(28)
-    expect(cardHeightForFieldCount(-3)).toBe(28)
-    expect(cardHeightForFieldCount(1)).toBe(28)
+    expect(cardHeightForFieldCount(0)).toBe(30)
+    expect(cardHeightForFieldCount(-3)).toBe(30)
+    expect(cardHeightForFieldCount(1)).toBe(30)
   })
 
   it('grows per field', () => {
-    expect(cardHeightForFieldCount(2)).toBe(48)
-    expect(cardHeightForFieldCount(3)).toBe(68)
-    expect(cardHeightForFieldCount(5)).toBe(108)
+    expect(cardHeightForFieldCount(2)).toBe(52)
+    expect(cardHeightForFieldCount(3)).toBe(74)
+    expect(cardHeightForFieldCount(5)).toBe(118)
   })
 
   it('caps at the max field count (5)', () => {
-    expect(cardHeightForFieldCount(6)).toBe(108)
-    expect(cardHeightForFieldCount(20)).toBe(108)
+    expect(cardHeightForFieldCount(6)).toBe(118)
+    expect(cardHeightForFieldCount(20)).toBe(118)
   })
 })
 
