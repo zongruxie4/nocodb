@@ -1076,6 +1076,9 @@ const addRecordWithRange = (range: any, date: dayjs.Dayjs) => {
                   :underline="fieldStyles[field.id].underline"
                 />
               </template>
+              <template #tooltip>
+                <SmartsheetRecordFieldsTooltip :record="record" :fields="fields" />
+              </template>
             </LazySmartsheetCalendarRecordCard>
           </LazySmartsheetRow>
         </div>

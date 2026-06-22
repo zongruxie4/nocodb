@@ -96,29 +96,29 @@ const rowColorInfo = computed(() => {
     <div class="overflow-hidden gap-2 flex w-full" :class="multiline ? 'items-start py-1' : 'items-center justify-center'">
       <span v-if="position === 'rightRounded' || position === 'none'" class="ml-2 mb-0.6"> .... </span>
       <slot name="time" />
-      <div
+      <NcTooltip
+        wrap-child="div"
+        :disabled="selected || dragging"
+        overlay-class-name="nc-record-fields-tooltip"
         :class="[{ 'pr-8.5': position === 'leftRounded' }, multiline ? 'overflow-hidden' : 'mb-0.5 overflow-x-hidden truncate']"
         class="flex w-full flex-col gap-1"
       >
+        <template #title>
+          <slot name="tooltip">
+            <slot />
+          </slot>
+        </template>
         <div v-if="multiline" class="nc-calendar-card-fields flex flex-col gap-0.5 w-full overflow-hidden">
           <slot />
         </div>
-        <NcTooltip
+        <span
           v-else
-          :disabled="selected || dragging"
-          :class="{
-            ' text-ellipsis': ['leftRounded', 'rightRounded', 'rounded'].includes(position),
-          }"
-          class="break-word whitespace-nowrap overflow-hidden pr-1"
-          show-on-truncate-only
-          wrap-child="span"
+          class="break-word whitespace-nowrap overflow-hidden pr-1 text-sm text-nowrap text-nc-content-gray leading-7"
+          :class="{ 'text-ellipsis': ['leftRounded', 'rightRounded', 'rounded'].includes(position) }"
         >
-          <slot class="text-sm text-nowrap text-nc-content-gray leading-7" />
-          <template #title>
-            <slot />
-          </template>
-        </NcTooltip>
-      </div>
+          <slot />
+        </span>
+      </NcTooltip>
       <span v-if="position === 'leftRounded' || position === 'none'" class="absolute mb-0.6 z-10 right-5"> ... </span>
     </div>
 

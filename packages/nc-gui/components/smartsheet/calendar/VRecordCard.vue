@@ -76,7 +76,7 @@ const rowColorInfo = computed(() => {
       <NcTooltip
         wrap-child="div"
         :disabled="selected || dragging"
-        overlay-class-name="nc-calendar-card-tooltip"
+        overlay-class-name="nc-record-fields-tooltip"
         :class="
           multiline
             ? 'nc-calendar-vcard-fields flex flex-col gap-0.5 w-full overflow-hidden flex-1 min-h-0'
@@ -84,11 +84,9 @@ const rowColorInfo = computed(() => {
         "
       >
         <template #title>
-          <div class="nc-calendar-card-tooltip-fields flex flex-col gap-2 text-left">
-            <slot name="tooltip">
-              <slot />
-            </slot>
-          </div>
+          <slot name="tooltip">
+            <slot />
+          </slot>
         </template>
         <slot />
       </NcTooltip>
@@ -133,43 +131,5 @@ const rowColorInfo = computed(() => {
 
 .nc-calendar-vcard-fields :deep(.plain-cell:first-child) {
   @apply text-nc-content-gray font-semibold;
-}
-</style>
-
-<!-- Global (non-scoped): the tooltip overlay is teleported to <body>, so scoped
-     styles can't reach it. Render all fields as clean multiline rows. -->
-<style lang="scss">
-// Cap the tooltip height and scroll when a record has many fields.
-.nc-calendar-card-tooltip .ant-tooltip-inner {
-  max-height: 280px;
-  overflow-y: auto;
-}
-
-.nc-calendar-card-tooltip .nc-calendar-card-tooltip-fields {
-  .plain-cell {
-    display: block;
-    width: 100%;
-    line-height: 18px;
-
-    &::before {
-      content: '' !important;
-      padding: 0 !important;
-    }
-  }
-
-  // Each field shows its name as a small muted label above the value, so a value
-  // like "8" is clearly "Number: 8" rather than an anonymous number.
-  .nc-calendar-tooltip-field {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-  }
-
-  .nc-calendar-tooltip-label {
-    font-size: 11px;
-    line-height: 14px;
-    font-weight: 500;
-    opacity: 0.6;
-  }
 }
 </style>

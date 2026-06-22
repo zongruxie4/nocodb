@@ -715,6 +715,9 @@ const addRecord = (date: dayjs.Dayjs) => {
               >
                 +{{ hiddenFieldCount(record) }} more
               </div>
+              <template #tooltip>
+                <SmartsheetRecordFieldsTooltip :record="record" :fields="fields" />
+              </template>
             </LazySmartsheetCalendarRecordCard>
           </LazySmartsheetRow>
         </div>
