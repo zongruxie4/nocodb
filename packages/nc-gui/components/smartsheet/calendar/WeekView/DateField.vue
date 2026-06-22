@@ -1,7 +1,12 @@
 <script lang="ts" setup>
 import dayjs from 'dayjs'
 import type { ColumnType } from 'nocodb-sdk'
-import { CALENDAR_CARD_MAX_FIELDS, cardHeightForFieldCount, computeColumnPackedLayout } from '../calendarRecordCardHeight'
+import {
+  CALENDAR_CARD_MAX_FIELDS,
+  CALENDAR_CARD_ROW_GAP,
+  cardHeightForFieldCount,
+  computeColumnPackedLayout,
+} from '../calendarRecordCardHeight'
 import type { Row } from '~/lib/types'
 
 const emits = defineEmits(['expandRecord', 'newRecord'])
@@ -307,20 +312,18 @@ const calendarData = computed(() => {
 // every record is visible and the page scrolls instead.
 const isExpanded = computed(() => recordHeightMode.value === 'expanded')
 
-// Tallest record stack across all columns (highest row index + 1). Each record carries
-// its assigned `rowIndex`; multi-day records share one row, so this is the lane count.
-const maxRowCount = computed(() => {
-  let max = 0
+// Height needed to show every card in the tallest column. Cards are variable-height and
+// packed by computeColumnPackedLayout (their final `top` + `cardHeight` live on rowMeta),
+// so the content bottom is the max of `top + cardHeight` across all records, plus a gap.
+const contentHeight = computed(() => {
+  let maxBottom = 0
   for (const record of calendarData.value) {
-    const idx = (record.rowMeta as { rowIndex?: number }).rowIndex ?? 0
-    if (idx + 1 > max) max = idx + 1
+    const top = Number.parseFloat(record.rowMeta.style?.top as string) || 0
+    const height = (record.rowMeta as { cardHeight?: number }).cardHeight ?? 0
+    if (top + height > maxBottom) maxBottom = top + height
   }
-  return max
+  return maxBottom + CALENDAR_CARD_ROW_GAP
 })
-
-// Height needed to show the whole stack. Mirrors the per-record top formula
-// (`rowIndex * 28 + (rowIndex + 1) * 8`) plus a record height (28) and bottom padding.
-const contentHeight = computed(() => maxRowCount.value * 36 + 24)
 
 const gridStyle = computed(() => {
   if (!isExpanded.value) return undefined
