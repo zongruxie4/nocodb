@@ -4756,6 +4756,51 @@ export class ColumnsService implements IColumnsService {
       context.socket_id,
     );
 
+    // A Links/LTAR field also auto-creates a back-link column on the related
+    // table. Broadcast a column_add for that table too so clients viewing it
+    // pick up the new field without a manual refresh. Mirrors the related-table
+    // column_delete broadcast in columnDelete. Best-effort — the column is
+    // already committed, so a notification failure must not fail the request.
+    if (isLinksOrLTAR(param.column) && newColumn) {
+      try {
+        const relationColOpt =
+          await newColumn.getColOptions<LinkToAnotherRecordColumn>(
+            context,
+            ncMeta,
+          );
+        if (relationColOpt) {
+          const { refContext } = relationColOpt.getRelContext(context);
+          const refTable = await relationColOpt.getRelatedTable(
+            refContext,
+            ncMeta,
+          );
+          // Skip self-relations — the main broadcast above already covers the
+          // source table.
+          if (refTable && refTable.id !== table.id) {
+            await refTable.getColumns(refContext, ncMeta);
+            NocoSocket.broadcastEvent(
+              refContext,
+              {
+                event: EventType.META_EVENT,
+                payload: {
+                  action: 'column_add',
+                  payload: {
+                    table: refTable,
+                  },
+                },
+              },
+              context.socket_id,
+            );
+          }
+        }
+      } catch (e) {
+        this.logger.error(
+          `Failed to broadcast back-link column_add for related table: ${e.message}`,
+          e.stack,
+        );
+      }
+    }
+
     if (param.apiVersion === NcApiVersion.V3) {
       if (savedColumn)
         return (await Column.get(context, {
