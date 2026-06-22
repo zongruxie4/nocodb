@@ -32,7 +32,7 @@ const showLabels = computed(() => visibleFields.value.length > 1)
      overlay-class-name="nc-record-fields-tooltip". -->
 <style lang="scss">
 .nc-record-fields-tooltip .ant-tooltip-inner {
-  max-height: 280px;
+  max-height: 220px;
   overflow-y: auto;
 }
 

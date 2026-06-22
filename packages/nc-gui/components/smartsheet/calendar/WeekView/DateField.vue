@@ -696,6 +696,7 @@ const addRecord = (date: dayjs.Dayjs) => {
               :resize="!!record.rowMeta.range?.fk_to_col && isUIAllowed('dataEdit')"
               size="auto"
               multiline
+              :has-hidden-fields="hiddenFieldCount(record) > 0"
               @dblclick.stop="emits('expandRecord', record)"
               @resize-start="onResizeStart"
             >

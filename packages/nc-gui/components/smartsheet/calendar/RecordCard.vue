@@ -13,6 +13,10 @@ interface Props {
   // When true the card fills its container height and stacks visible fields over
   // multiple lines (week view) instead of clamping to a single truncated line.
   multiline?: boolean
+  // Multiline cards hide fields behind "+N more"; when the parent signals there
+  // are hidden fields, show the tooltip on hover (column layout never trips the
+  // truncate detector, so there's nothing else to gate on).
+  hasHiddenFields?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -23,6 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
   position: 'rounded',
   dragging: false,
   multiline: false,
+  hasHiddenFields: false,
 })
 
 const emit = defineEmits(['resizeStart'])
@@ -107,9 +112,8 @@ const rowColorInfo = computed(() => {
         <NcTooltip
           v-if="multiline"
           wrap-child="div"
-          :disabled="selected || dragging"
+          :disabled="selected || dragging || !hasHiddenFields"
           overlay-class-name="nc-record-fields-tooltip"
-          show-on-truncate-only
           class="w-full overflow-hidden"
         >
           <template #title>
