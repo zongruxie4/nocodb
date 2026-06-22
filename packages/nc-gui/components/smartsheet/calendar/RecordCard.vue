@@ -52,7 +52,7 @@ const rowColorInfo = computed(() => {
       'bg-nc-purple-50': props.color === 'purple',
       'bg-nc-bg-default border-nc-border-gray-dark': color === 'gray',
       '!bg-nc-bg-gray-light': hover || dragging,
-      'items-start py-1': multiline,
+      'items-start': multiline,
       'items-center': !multiline,
     }"
     :style="{
@@ -75,8 +75,11 @@ const rowColorInfo = computed(() => {
         'bg-nc-pink-500': props.color === 'pink',
         'bg-nc-purple-500': props.color === 'purple',
         'bg-nc-gray-900': color === 'gray',
-        // Multiline: inset rounded accent that clears the card's rounded corners.
-        'self-stretch my-1.5 rounded-full': multiline,
+        // Multiline: full-height colored left edge pulled flush to the card
+        // border (-my-px/-ml-px); the card's overflow-hidden + radius clips its
+        // corners to follow the rounding. No explicit rounding here, so the
+        // strip stays a consistent width on short and tall cards alike.
+        'self-stretch -my-px -ml-px': multiline,
         // Single-line: original short centered bar.
         'min-h-6.5': !multiline,
       }"
@@ -90,7 +93,7 @@ const rowColorInfo = computed(() => {
       @mousedown.stop="emit('resizeStart', 'left', $event, record)"
     ></div>
 
-    <div class="overflow-hidden gap-2 flex w-full" :class="multiline ? 'items-start' : 'items-center justify-center'">
+    <div class="overflow-hidden gap-2 flex w-full" :class="multiline ? 'items-start py-1' : 'items-center justify-center'">
       <span v-if="position === 'rightRounded' || position === 'none'" class="ml-2 mb-0.6"> .... </span>
       <slot name="time" />
       <div

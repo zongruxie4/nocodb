@@ -230,7 +230,11 @@ const calendarData = computed(() => {
               columnOffsetPx(startDaysDiff) +
               0.5
             }px, ${columnWidthPx(startDaysDiff) + 0.5}px))`,
-            left: `${columnOffsetPx(startDaysDiff) - 1}px`,
+            // Snap the card's left to a whole pixel so the colored accent bar
+            // lands at the same sub-pixel offset in every column (otherwise
+            // columns on a .5px boundary, e.g. Sunday, render the thin bar
+            // softened/narrower than the others).
+            left: `${Math.round(columnOffsetPx(startDaysDiff)) - 1}px`,
           },
         },
       })
@@ -269,6 +273,7 @@ const calendarData = computed(() => {
     })),
   )
   recordsInRange.forEach((r, i) => {
+    if (!r.rowMeta.style) r.rowMeta.style = {}
     r.rowMeta.style.top = `${tops[i]}px`
     r.rowMeta.style.height = `${r.rowMeta.cardHeight}px`
   })
