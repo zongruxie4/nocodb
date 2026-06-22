@@ -2134,6 +2134,10 @@
     "sandboxChangesReverted": "Sandbox changes reverted successfully",
     "discardSandboxWarning": "This will permanently revert all schema changes in this sandbox to match the master base. This action cannot be undone.",
     "createNewSandbox": "Create new sandbox",
+    "sandboxPublishing": "Publishing…",
+    "sandboxDeleting": "Deleting…",
+    "sandboxDeleteRetryHint": "Taking too long? Click to retry.",
+    "mergeFailed": "Merge failed",
     "master": "Master",
     "schemaLocked": "Schema Locked",
     "schemaLockedActive": "Schema Editing Locked",
@@ -3498,7 +3502,9 @@
     "filteringNotSupportedForFieldsWithErrors": "Filtering is not supported for fields with errors",
     "sortingNotSupportedForFieldsWithErrors": "Sorting is not supported for fields with errors",
     "sortingNotSupportedForField": "Sorting is not supported for {type} field",
-    "groupingNotSupportedForFieldsWithErrors": "Grouping is not supported for fields with errors"
+    "groupingNotSupportedForFieldsWithErrors": "Grouping is not supported for fields with errors",
+    "sandboxMasterLocked": "This base has an active sandbox — make schema changes in the sandbox.",
+    "sandboxFeatureOnMaster": "This action is managed on the master base, not in the sandbox."
   },
   "placeholder": {
     "findBaseCollaborator": "Find a base collaborator",
