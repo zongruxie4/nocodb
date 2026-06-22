@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import dayjs from 'dayjs'
 import type { ColumnType } from 'nocodb-sdk'
+import { CALENDAR_CARD_MAX_FIELDS, cardHeightForFieldCount, computeColumnPackedLayout } from '../calendarRecordCardHeight'
 import type { Row } from '~/lib/types'
 
 const emits = defineEmits(['expandRecord', 'newRecord'])
@@ -58,6 +59,25 @@ const fieldStyles = computed(() => {
 const getFieldStyle = (field: ColumnType) => {
   return fieldStyles.value.get(field.id)
 }
+
+// All non-empty visible fields for a record.
+const nonEmptyCardFields = (record: Row) => (fields.value ?? []).filter((f) => f && !isRowEmpty(record, f))
+
+// Fields actually rendered on the card. When there are more than the cap, the
+// last line is reserved for a "+N more" hint, so we render one fewer field.
+const cardFields = (record: Row) => {
+  const all = nonEmptyCardFields(record)
+  return all.length > CALENDAR_CARD_MAX_FIELDS ? all.slice(0, CALENDAR_CARD_MAX_FIELDS - 1) : all
+}
+
+// Count of non-empty fields not shown on the card (0 when everything fits).
+const hiddenFieldCount = (record: Row) => {
+  const total = nonEmptyCardFields(record).length
+  return total > CALENDAR_CARD_MAX_FIELDS ? total - (CALENDAR_CARD_MAX_FIELDS - 1) : 0
+}
+
+// Lines the card renders: the shown fields plus the "+N more" line, if any.
+const cardLineCount = (record: Row) => cardFields(record).length + (hiddenFieldCount(record) > 0 ? 1 : 0)
 
 // Calculate the dates of the week
 const weekDates = computed(() => {
@@ -204,6 +224,10 @@ const calendarData = computed(() => {
       else if (isStartInRange) position = 'leftRounded'
       else if (isEndInRange) position = 'rightRounded'
 
+      // Card height grows with the number of non-empty visible fields (capped),
+      // so week-view cards can show several fields over multiple lines.
+      const cardHeight = cardHeightForFieldCount(cardLineCount(record))
+
       recordsInRange.push({
         ...record,
         rowMeta: {
@@ -212,6 +236,11 @@ const calendarData = computed(() => {
           position,
           id,
           spanningDays: Math.abs(ogStartDate.diff(endDate, 'day')) - Math.abs(startDate.diff(endDate, 'day')),
+          // Stashed for the post-pass that packs cards down each column.
+          suitableRow,
+          cardHeight,
+          startCol: startDaysDiff,
+          spanCols: spanDays,
           style: {
             width: `calc(max(${
               columnOffsetPx(startDaysDiff + spanDays - 1) +
@@ -219,8 +248,11 @@ const calendarData = computed(() => {
               columnOffsetPx(startDaysDiff) +
               0.5
             }px, ${columnWidthPx(startDaysDiff) + 0.5}px))`,
-            left: `${columnOffsetPx(startDaysDiff) - 1}px`,
-            top: `${suitableRow * 28 + Math.max(suitableRow + 1, 1) * 8}px`,
+            // Snap the card's left to a whole pixel so the colored accent bar
+            // lands at the same sub-pixel offset in every column (otherwise
+            // columns on a .5px boundary, e.g. Sunday, render the thin bar
+            // softened/narrower than the others).
+            left: `${Math.round(columnOffsetPx(startDaysDiff)) - 1}px`,
           },
         },
       })
@@ -246,6 +278,22 @@ const calendarData = computed(() => {
     } else {
       formattedData.value.forEach(processRecord)
     }
+  })
+
+  // Each card keeps its own natural height and packs tightly down its column;
+  // multi-day bars sit below whatever is already in the columns they span.
+  const tops = computeColumnPackedLayout(
+    recordsInRange.map((r) => ({
+      startCol: r.rowMeta.startCol!,
+      spanCols: r.rowMeta.spanCols!,
+      rowIndex: r.rowMeta.suitableRow!,
+      height: r.rowMeta.cardHeight!,
+    })),
+  )
+  recordsInRange.forEach((r, i) => {
+    if (!r.rowMeta.style) r.rowMeta.style = {}
+    r.rowMeta.style.top = `${tops[i]}px`
+    r.rowMeta.style.height = `${r.rowMeta.cardHeight}px`
   })
 
   return recordsInRange
@@ -646,12 +694,14 @@ const addRecord = (date: dayjs.Dayjs) => {
               :position="record.rowMeta.position"
               :record="record"
               :resize="!!record.rowMeta.range?.fk_to_col && isUIAllowed('dataEdit')"
+              size="auto"
+              multiline
+              :has-hidden-fields="hiddenFieldCount(record) > 0"
               @dblclick.stop="emits('expandRecord', record)"
               @resize-start="onResizeStart"
             >
-              <template v-for="(field, index) in fields" :key="index">
+              <template v-for="(field, index) in cardFields(record)" :key="index">
                 <LazySmartsheetPlainCell
-                  v-if="!isRowEmpty(record, field!)"
                   v-model="record.row[field!.title!]"
                   class="text-xs"
                   :bold="getFieldStyle(field).bold"
@@ -659,6 +709,15 @@ const addRecord = (date: dayjs.Dayjs) => {
                   :italic="getFieldStyle(field).italic"
                   :underline="getFieldStyle(field).underline"
                 />
+              </template>
+              <div
+                v-if="hiddenFieldCount(record) > 0"
+                class="nc-calendar-card-more truncate leading-5 text-bodySm text-nc-content-gray-muted"
+              >
+                +{{ hiddenFieldCount(record) }} more
+              </div>
+              <template #tooltip>
+                <SmartsheetRecordFieldsTooltip :record="record" :fields="fields" />
               </template>
             </LazySmartsheetCalendarRecordCard>
           </LazySmartsheetRow>

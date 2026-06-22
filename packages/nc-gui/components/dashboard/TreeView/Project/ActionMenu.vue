@@ -33,7 +33,7 @@ const baseRole = computed(() => base.value.project_role || base.value.workspace_
 const baseDuplicateReason = computed(() =>
   sandboxRestrictionReason('baseDuplicate', {
     roles: [stringifyRolesObj(orgRoles.value), baseRole.value].join(),
-    base: base,
+    base,
   }),
 )
 
