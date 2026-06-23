@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import debug from 'debug';
 import { Column } from '~/models';
 import { MetaTable } from '~/utils/globals';
+import { DriverClient } from '~/utils/nc-config';
 import Noco from '~/Noco';
 
 /**
@@ -43,36 +44,54 @@ export class CleanupOrphanCrossBaseLinksMigration {
   async job() {
     const ncMeta = Noco.ncMeta;
 
-    // 1. cross-base relations only (rare → tiny set). `fk_related_base_id` is
-    //    the codebase's own cross-base marker (see getRelContext) and is set
-    //    ONLY for cross-base links, so `whereNotNull` already isolates them.
-    //    The `!== base_id` guard and the not-deleted filter run in JS to keep
-    //    the query pure-knex (no raw SQL / dialect-specific operators) — it
-    //    must run on any meta DB (pg / mysql / sqlite).
-    const candidates = await ncMeta
-      .knexConnection(MetaTable.COL_RELATIONS)
-      .whereNotNull('fk_related_base_id');
+    // Cross-base links are a Postgres-only feature, so a non-PG meta DB can't
+    // hold any — skip the scan entirely and mark the migration complete.
+    if (ncMeta.knex.clientType() !== DriverClient.PG) {
+      this.logger.log(
+        `cross-base orphan link cleanup: skipped (meta db is ${ncMeta.knex.clientType()}, cross-base is pg-only)`,
+      );
+      return true;
+    }
 
-    const crossBaseRelations = candidates.filter(
+    // 1. Find orphaned cross-base links in a SINGLE query: cross-base relations
+    //    (`fk_related_base_id` set — the codebase's own cross-base marker, see
+    //    getRelContext) LEFT JOINed to their related model in its OWN base. An
+    //    orphan is a relation whose model row is missing (join miss) or deleted.
+    //    Pure-knex (leftJoin / whereNotNull / select) so it runs on any meta DB
+    //    (pg / mysql / sqlite); cross-base is rare so the set is tiny. Boolean /
+    //    cross-base checks run in JS to stay dialect-agnostic (null | false | 0).
+    const rows = await ncMeta
+      .knexConnection({ cr: MetaTable.COL_RELATIONS })
+      .leftJoin({ m: MetaTable.MODELS }, function () {
+        this.on('m.id', '=', 'cr.fk_related_model_id').andOn(
+          'm.base_id',
+          '=',
+          'cr.fk_related_base_id',
+        );
+      })
+      .whereNotNull('cr.fk_related_base_id')
+      .select(
+        'cr.fk_column_id',
+        'cr.base_id',
+        'cr.fk_workspace_id',
+        'cr.fk_related_base_id',
+        'cr.fk_related_model_id',
+        { cr_deleted: 'cr.deleted' },
+        { related_model_id: 'm.id' },
+        { related_model_deleted: 'm.deleted' },
+      );
+
+    const orphans = rows.filter(
       (r) =>
-        r.fk_related_base_id !== r.base_id && !r.deleted, // deleted: null | false | 0
+        r.fk_related_base_id !== r.base_id && // genuinely cross-base
+        !r.cr_deleted && // relation not already soft-deleted
+        (r.related_model_id == null || r.related_model_deleted), // model gone/deleted
     );
 
-    let scanned = 0;
+    const scanned = rows.length;
     let cleaned = 0;
 
-    for (const rel of crossBaseRelations) {
-      scanned++;
-
-      // 2. resolve the related model in ITS OWN base; orphan = gone or deleted.
-      const related = await ncMeta.metaGet2(
-        rel.fk_workspace_id,
-        rel.fk_related_base_id,
-        MetaTable.MODELS,
-        rel.fk_related_model_id,
-      );
-      if (related && !related.deleted) continue;
-
+    for (const rel of orphans) {
       const ctx = {
         workspace_id: rel.fk_workspace_id,
         base_id: rel.base_id,
