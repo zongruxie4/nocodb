@@ -518,6 +518,21 @@ const onFilterLabelClick = () => {
   if (!vModel.value.childId && !(vModel.value.is_custom_link && vModel.value.custom?.ref_model_id)) return
 
   limitRecToCond.value = !limitRecToCond.value
+
+  // On enabling the filter picker, re-fetch the related table's meta for
+  // cross-base links so fields a peer added since this panel opened show up in
+  // the field list. Cross-base meta isn't kept live — this client never
+  // receives the other base's realtime events; same-base stays fresh via realtime.
+  if (limitRecToCond.value && crossBase.value) {
+    const tableId = vModel.value?.is_custom_link ? vModel.value?.custom?.ref_model_id : vModel.value?.childId
+    const relatedBaseId = (vModel.value?.colOptions as LinkToAnotherRecordType)?.fk_related_base_id || vModel.value?.ref_base_id
+
+    if (tableId && relatedBaseId) {
+      getMeta(relatedBaseId, tableId, true).catch(() => {
+        // ignore
+      })
+    }
+  }
 }
 
 const onCrossBaseToggle = () => {
