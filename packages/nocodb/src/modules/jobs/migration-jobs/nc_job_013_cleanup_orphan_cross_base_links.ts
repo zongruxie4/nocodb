@@ -55,11 +55,21 @@ export class CleanupOrphanCrossBaseLinksMigration {
 
     // 1. Find orphaned cross-base links in a SINGLE query: cross-base relations
     //    (`fk_related_base_id` set — the codebase's own cross-base marker, see
-    //    getRelContext) LEFT JOINed to their related model in its OWN base. An
-    //    orphan is a relation whose model row is missing (join miss) or deleted.
-    //    Pure-knex (leftJoin / whereNotNull / select) so it runs on any meta DB
-    //    (pg / mysql / sqlite); cross-base is rare so the set is tiny. Boolean /
-    //    cross-base checks run in JS to stay dialect-agnostic (null | false | 0).
+    //    getRelContext) LEFT JOINed to their related model (in its OWN base) and
+    //    to their OWNING link column. An orphan we reap = related model missing
+    //    (join miss) or deleted, AND the owning link column is still LIVE.
+    //
+    //    The owning-column check is critical: the #9392 trash/restore lifecycle
+    //    soft-deletes the owning link column (deleted=true) when its related
+    //    table is trashed — that link is restore-pending and is reactivated on
+    //    restore. The relation row is NOT soft-deleted by teardown, so gating on
+    //    `cr.deleted` would never exclude it; we must gate on the OWNING COLUMN's
+    //    deleted state. Reaping a soft-deleted link would hard-delete it
+    //    (Column.delete2) and break restore (data loss). So we only reap
+    //    pre-teardown residue — links whose owning column was never soft-deleted.
+    //
+    //    Pure-knex (leftJoin / whereNotNull / select) so it runs on any meta DB;
+    //    boolean / cross-base checks run in JS to stay dialect-agnostic.
     const rows = await ncMeta
       .knexConnection({ cr: MetaTable.COL_RELATIONS })
       .leftJoin({ m: MetaTable.MODELS }, function () {
@@ -69,6 +79,13 @@ export class CleanupOrphanCrossBaseLinksMigration {
           'cr.fk_related_base_id',
         );
       })
+      .leftJoin({ oc: MetaTable.COLUMNS }, function () {
+        this.on('oc.id', '=', 'cr.fk_column_id').andOn(
+          'oc.base_id',
+          '=',
+          'cr.base_id',
+        );
+      })
       .whereNotNull('cr.fk_related_base_id')
       .select(
         'cr.fk_column_id',
@@ -76,7 +93,7 @@ export class CleanupOrphanCrossBaseLinksMigration {
         'cr.fk_workspace_id',
         'cr.fk_related_base_id',
         'cr.fk_related_model_id',
-        { cr_deleted: 'cr.deleted' },
+        { own_col_deleted: 'oc.deleted' },
         { related_model_id: 'm.id' },
         { related_model_deleted: 'm.deleted' },
       );
@@ -84,8 +101,8 @@ export class CleanupOrphanCrossBaseLinksMigration {
     const orphans = rows.filter(
       (r) =>
         r.fk_related_base_id !== r.base_id && // genuinely cross-base
-        !r.cr_deleted && // relation not already soft-deleted
-        (r.related_model_id == null || r.related_model_deleted), // model gone/deleted
+        !r.own_col_deleted && // owning column LIVE — leave soft-deleted (restore-pending) to trash/restore
+        (r.related_model_id == null || r.related_model_deleted), // related model gone/deleted
     );
 
     const scanned = rows.length;
