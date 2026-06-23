@@ -44,12 +44,19 @@ export class CleanupOrphanCrossBaseLinksMigration {
     const ncMeta = Noco.ncMeta;
 
     // 1. cross-base relations only (rare → tiny set). `fk_related_base_id` is
-    //    the codebase's own cross-base marker (see getRelContext).
-    const crossBaseRelations = await ncMeta
+    //    the codebase's own cross-base marker (see getRelContext) and is set
+    //    ONLY for cross-base links, so `whereNotNull` already isolates them.
+    //    The `!== base_id` guard and the not-deleted filter run in JS to keep
+    //    the query pure-knex (no raw SQL / dialect-specific operators) — it
+    //    must run on any meta DB (pg / mysql / sqlite).
+    const candidates = await ncMeta
       .knexConnection(MetaTable.COL_RELATIONS)
-      .whereNotNull('fk_related_base_id')
-      .whereRaw('?? <> ??', ['fk_related_base_id', 'base_id'])
-      .where((qb) => qb.whereNull('deleted').orWhere('deleted', false));
+      .whereNotNull('fk_related_base_id');
+
+    const crossBaseRelations = candidates.filter(
+      (r) =>
+        r.fk_related_base_id !== r.base_id && !r.deleted, // deleted: null | false | 0
+    );
 
     let scanned = 0;
     let cleaned = 0;
