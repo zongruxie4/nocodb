@@ -333,7 +333,12 @@ watch(
 
       if (!relatedBaseId) return
 
-      getMeta(relatedBaseId, tableId).catch(() => {
+      // Force-refresh for cross-base links: the related table lives in another
+      // base whose realtime meta events this client never receives (the META
+      // socket channel + handler are scoped to the active base), so a cached
+      // meta can be stale — e.g. a peer added a field in the other base. A
+      // same-base related table stays fresh via realtime, so don't force there.
+      getMeta(relatedBaseId, tableId, crossBase.value).catch(() => {
         // ignore
       })
       viewsStore
