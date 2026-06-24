@@ -76,7 +76,7 @@ const slotHasChildren = (name?: string) => {
             />
           </svg>
         </span>
-        <div class="text-captionSm text-nc-content-gray-muted">
+        <div class="flex-1 text-right text-captionSm text-nc-content-gray-muted">
           {{ `${formatPercentage(percentage, precision)}` }}
         </div>
       </template>
