@@ -9,6 +9,7 @@ import { NcContext } from '~/interface/config';
 import { NcBaseError, NcError } from '~/helpers/catchError';
 import { getViewAndModelByAliasOrId } from '~/helpers/dataHelpers';
 import { restrictNestedLinkQueryForColumn } from '~/helpers/nestedLinkQueryHelpers';
+import { parseFilterArrJson } from '~/helpers/filterArrJsonHelper';
 import getAst from '~/helpers/getAst';
 import { PagedResponseImpl } from '~/helpers/PagedResponse';
 import { Base, Column, FormView, Model, Source, View } from '~/models';
@@ -131,15 +132,7 @@ export class DatasService {
     });
 
     const countArgs: any = { ...param.query, throwErrorIfInvalidParams: true };
-    try {
-      const parsedFilterArr = JSON.parse(countArgs.filterArrJson);
-      // Only accept a well-formed filter array — a malformed `filterArrJson`
-      // could parse to a non-array (spread crashes downstream) or carry null
-      // entries; guard here and let conditionV2 tolerate the rest.
-      if (Array.isArray(parsedFilterArr)) {
-        countArgs.filterArr = parsedFilterArr;
-      }
-    } catch (e) {}
+    countArgs.filterArr = parseFilterArrJson(context, countArgs.filterArrJson);
 
     const count: number = await baseModel.count(countArgs);
 
