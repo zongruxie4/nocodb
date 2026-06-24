@@ -16,6 +16,7 @@ import { DBQueryClient } from '~/dbQueryClient';
 import { NcContext } from '~/interface/config';
 import { validateV1V2DataPayloadLimit } from '~/helpers/dataHelpers';
 import { restrictNestedLinkQuery } from '~/helpers/nestedLinkQueryHelpers';
+import { parseFilterArrJson } from '~/helpers/filterArrJsonHelper';
 import { Column, Model, Source, View } from '~/models';
 import { nocoExecute, processConcurrently } from '~/utils';
 import { DatasService } from '~/services/datas.service';
@@ -348,9 +349,7 @@ export class DataTableService {
     });
 
     const countArgs: any = { ...param.query };
-    try {
-      countArgs.filterArr = JSON.parse(countArgs.filterArrJson);
-    } catch (e) {}
+    countArgs.filterArr = parseFilterArrJson(context, countArgs.filterArrJson);
 
     const count: number = await baseModel.count(countArgs, false, true);
 
