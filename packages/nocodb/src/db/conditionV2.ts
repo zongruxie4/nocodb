@@ -88,6 +88,16 @@ function getLogicalOpMethod(filter: Filter) {
   }
 }
 
+// A filter is disabled when the toggle-filter feature is enabled and its
+// `enabled` flag is explicitly off. `enabled` may be a boolean or a 0/1 int
+// depending on the DB driver, so both forms are treated as disabled.
+function isFilterDisabled(
+  filter: Filter | FilterType,
+  supportToggle: boolean,
+): boolean {
+  return supportToggle && (filter.enabled === false || filter.enabled === 0);
+}
+
 const parseConditionV2 = async (
   baseModelSqlv2: IBaseModelSqlV2,
   _filter: Filter | FilterType | FilterType[] | Filter[],
@@ -107,10 +117,12 @@ const parseConditionV2 = async (
   }
   const supportToggle = await Filter.supportToggle(baseModelSqlv2.context);
   if (Array.isArray(_filter)) {
-    // Filter out disabled filters before processing
-    const enabledFilters = supportToggle
-      ? _filter.filter((f) => f.enabled !== false && f.enabled !== 0)
-      : _filter;
+    // Drop null/undefined entries (e.g. a malformed `filterArr` such as
+    // `[null]` spread in from a count/list query) and any disabled filters
+    // before processing.
+    const enabledFilters = _filter.filter(
+      (f) => f && !isFilterDisabled(f, supportToggle),
+    );
 
     const qbs = await Promise.all(
       enabledFilters.map((child) =>
@@ -128,20 +140,22 @@ const parseConditionV2 = async (
     return {
       rootApply: (qbP) => {
         for (const qb1 of qbs) {
-          qb1.rootApply?.(qbP);
+          qb1?.rootApply?.(qbP);
         }
       },
       clause: (qbP) => {
         qbP.where((qb) => {
           for (const [i, qb1] of Object.entries(qbs)) {
-            qb[getLogicalOpMethod(enabledFilters[i])](qb1.clause);
+            if (qb1) {
+              qb[getLogicalOpMethod(enabledFilters[i])](qb1.clause);
+            }
           }
         });
       },
     };
   } else if (filter.is_group) {
     // Skip disabled filter groups entirely (cascade disable)
-    if (supportToggle && (filter.enabled === false || filter.enabled === 0)) {
+    if (isFilterDisabled(filter, supportToggle)) {
       return { clause: () => {}, rootApply: () => {} };
     }
 
@@ -180,7 +194,7 @@ const parseConditionV2 = async (
     if (!filter.fk_column_id) return;
 
     // Skip disabled leaf filters
-    if (supportToggle && (filter.enabled === false || filter.enabled === 0)) {
+    if (isFilterDisabled(filter, supportToggle)) {
       return { clause: () => {}, rootApply: () => {} };
     }
 

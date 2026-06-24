@@ -132,7 +132,13 @@ export class DatasService {
 
     const countArgs: any = { ...param.query, throwErrorIfInvalidParams: true };
     try {
-      countArgs.filterArr = JSON.parse(countArgs.filterArrJson);
+      const parsedFilterArr = JSON.parse(countArgs.filterArrJson);
+      // Only accept a well-formed filter array — a malformed `filterArrJson`
+      // could parse to a non-array (spread crashes downstream) or carry null
+      // entries; guard here and let conditionV2 tolerate the rest.
+      if (Array.isArray(parsedFilterArr)) {
+        countArgs.filterArr = parsedFilterArr;
+      }
     } catch (e) {}
 
     const count: number = await baseModel.count(countArgs);
