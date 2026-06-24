@@ -661,8 +661,9 @@ const extractLookupDependencies = async (
   // column's title) and therefore lack `nested`/`fieldsSet`. Normalize both —
   // `extractDependencies` writes straight to `fieldsSet.add(...)` and, unlike
   // `getAst`, never defaults it, so a missing set would crash.
-  const nestedDependencyFields = (dependencyFields.nested[relationColumn.title] =
-    dependencyFields.nested[relationColumn.title] || {});
+  dependencyFields.nested[relationColumn.title] =
+    dependencyFields.nested[relationColumn.title] || {};
+  const nestedDependencyFields = dependencyFields.nested[relationColumn.title];
   nestedDependencyFields.nested = nestedDependencyFields.nested || {};
   nestedDependencyFields.fieldsSet = nestedDependencyFields.fieldsSet || new Set();
 
