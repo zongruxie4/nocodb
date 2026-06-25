@@ -125,10 +125,12 @@ const onEasterEgg = () => {
 }
 
 const clientTypes = computed(() => {
-  const mssqlEnabled = easterEgg.value || isFeatureEnabled(FEATURE_FLAG.MSSQL_SOURCE)
+  const mssqlEnabled = isFeatureEnabled(FEATURE_FLAG.MSSQL_SOURCE)
+  const oracleEnabled = isFeatureEnabled(FEATURE_FLAG.ORACLE_SOURCE)
 
   return _clientTypes.filter((type) => {
     if (type.value === ClientType.MSSQL) return mssqlEnabled
+    if (type.value === ClientType.ORACLE) return oracleEnabled
 
     return (
       ([ClientType.SNOWFLAKE, ClientType.DATABRICKS].includes(type.value) && easterEgg.value) ||

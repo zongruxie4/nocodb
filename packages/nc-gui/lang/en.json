@@ -853,6 +853,7 @@
       "postgreSQL": "PostgreSQL",
       "sqlite": "SQLite",
       "mssql": "SQL Server",
+      "oracle": "Oracle",
       "dataBricks": "DataBricks",
       "telegram": "Telegram",
       "whatsapp": "Whatsapp",
