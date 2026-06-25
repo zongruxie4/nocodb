@@ -10,8 +10,9 @@ import type { ModelMessage, ToolSet } from 'ai';
 import type { LanguageModelV3 as LanguageModel } from '@ai-sdk/provider';
 
 /**
- * AI SDK DevTools — opt-in via NC_AI_DEVTOOLS=true (set on local dev / playwright
- * scripts in packages/nocodb; never set in production). Applied centrally in
+ * AI SDK DevTools — opt-in via NC_AI_DEVTOOLS=true. The watch:run* scripts in
+ * packages/nocodb default it to false; flip it to true locally when you need to
+ * inspect AI calls (never set in production). Applied centrally in
  * getModel() so it captures EVERY AI call — chat agents and the schema / docs /
  * completion / utils / data services all route through getModel(). Runs/steps/
  * tool-calls are written to `.devtools/generations.json` (under the backend cwd);
