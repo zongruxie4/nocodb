@@ -9122,10 +9122,13 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
   public now() {
     // T-SQL `datetime`/`datetime2` reject the `+00:00` offset suffix that
     // dayjs's `Z` token produces; mysql also stores in local-zone wall
-    // clock so it drops the offset. Both dialects share the offset-less
-    // shape. pg/sqlite preserve the offset to disambiguate stored TZ.
+    // clock so it drops the offset. Oracle DATE/TIMESTAMP implicitly
+    // convert strings via the session NLS_DATE_FORMAT/NLS_TIMESTAMP_FORMAT
+    // (pinned to the offset-less shape at connection time) — so it shares
+    // the offset-less form too; selectObject re-attaches `+00:00` on read.
+    // pg/sqlite preserve the offset to disambiguate stored TZ.
     const fmt =
-      this.isMySQL || this.isMssql
+      this.isMySQL || this.isMssql || this.isOracle
         ? 'YYYY-MM-DD HH:mm:ss'
         : 'YYYY-MM-DD HH:mm:ssZ';
     return dayjs().utc().format(fmt);

@@ -754,6 +754,7 @@ export class OracleUi implements SqlUi {
       case 'LongText':
       case 'Attachment':
       case 'GeoData':
+      case 'Geometry':
       case 'URL':
       case 'MultiSelect':
       case 'SingleSelect':
@@ -795,6 +796,7 @@ export class OracleUi implements SqlUi {
           'date',
         ];
 
+      case 'User':
       case 'CreatedBy':
       case 'LastModifiedBy':
         return ['char', 'nchar', 'varchar2', 'nvarchar2'];
@@ -814,14 +816,6 @@ export class OracleUi implements SqlUi {
       'ARRAYUNIQUE',
       'ARRAYSLICE',
       'ARRAYCOMPACT',
-      'DATETIME_DIFF',
-      // Oracle has no DATEADD(unit, n, date); the interval-arithmetic mapping
-      // lands with the formula phase — blocked rather than wrong until then.
-      'DATEADD',
-      // VALUE needs regex-style digit extraction with sign folding
-      // (e.g. "12ab-c345" -> -12345) that the planned mapping doesn't
-      // reproduce yet.
-      'VALUE',
     ];
   }
 

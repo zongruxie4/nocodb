@@ -32,7 +32,7 @@ export function safeDateAddUnitSQL(knex: Knex, unitBuilder: any): Knex.Raw {
 }
 
 function logicalScalarSql(knex: MapFnArgs['knex'], predicates: string): string {
-  return knex.clientType() === 'mssql'
+  return ['mssql', 'oracledb'].includes(knex.clientType())
     ? `CASE WHEN (${predicates}) THEN 1 ELSE 0 END`
     : `(${predicates})`;
 }
@@ -57,13 +57,20 @@ async function treatArgAsConditionalExp(
       bindings = { condArg };
       break;
     case FormulaDataTypes.STRING:
-      condStr = `(:condArg) IS NOT NULL AND (:condArg) != ''`;
+      // Oracle treats '' as NULL — the != '' arm is never true there (and
+      // is illegal on CLOBs), so IS NOT NULL alone is the equivalent check.
+      condStr =
+        args.knex.clientType() === 'oracledb'
+          ? `(:condArg) IS NOT NULL`
+          : `(:condArg) IS NOT NULL AND (:condArg) != ''`;
       bindings = { condArg };
       break;
     case FormulaDataTypes.BOOLEAN: {
-      // T-SQL has no `false` literal; use 0 (matches bit columns and the
-      // 1/0 CASE materialization from the mssql binary-builder).
-      const falseLit = args.knex.clientType() === 'mssql' ? '0' : 'false';
+      // T-SQL and Oracle have no `false` literal; use 0 (matches bit /
+      // number(1) columns and the 1/0 CASE materialization).
+      const falseLit = ['mssql', 'oracledb'].includes(args.knex.clientType())
+        ? '0'
+        : 'false';
       condStr = `(:condArg) IS NOT NULL AND (:condArg) != ${falseLit}`;
       bindings = { condArg };
       break;
@@ -151,7 +158,7 @@ export default {
     const castToString = async (arg: any) => {
       const { builder } = await args.fn(arg);
       const client = args.knex.clientType();
-      if (client === 'pg' || client === 'postgre') {
+      if (client === 'pg' || client === 'postgres') {
         return { builder: args.knex.raw(`(?)::text`, [builder]) };
       } else if (
         client === 'mysql' ||
@@ -162,6 +169,10 @@ export default {
       } else if (client === 'mssql') {
         return {
           builder: args.knex.raw(`CAST(? AS NVARCHAR(MAX))`, [builder]),
+        };
+      } else if (client === 'oracledb') {
+        return {
+          builder: args.knex.raw(`TO_CHAR(?)`, [builder]),
         };
       }
       return { builder };

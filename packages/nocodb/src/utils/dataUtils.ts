@@ -159,7 +159,7 @@ export function batchUpdate(
   tn: string | Knex.Raw<any>,
   data: Record<string, any>[],
   pk: string,
-) {
+): Knex.QueryBuilder | Knex.Raw | null {
   if (!data.length) return null;
 
   // Rows missing the primary key can't be targeted by the CASE/WHEN — and on

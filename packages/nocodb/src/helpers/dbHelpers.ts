@@ -918,6 +918,10 @@ export type DialectAware =
  * PG `boolean` columns reject `boolean = integer` — pg needs the real
  * boolean literal. MySQL `tinyint(1)` and SQLite numeric-bool tolerate
  * both; we keep them on `true`/`false` for consistency.
+ *
+ * Oracle stores booleans as `NUMBER(1)` (no SQL BOOLEAN before 23ai) and
+ * node-oracledb can't bind a JS boolean against a NUMBER column — use 1/0
+ * like mssql.
  */
 export function deletedColValue(
   knexOrModel: DialectAware,
@@ -925,15 +929,17 @@ export function deletedColValue(
 ): boolean | number {
   const m = knexOrModel as Partial<{
     isMssql: boolean;
+    isOracle: boolean;
     dbDriver: { client: { config: { client?: unknown } } };
     client: { config: { client?: unknown } };
   }>;
+  const clientName =
+    m.client?.config?.client ?? m.dbDriver?.client?.config?.client;
   const isMssql =
-    typeof m.isMssql === 'boolean'
-      ? m.isMssql
-      : (m.client?.config?.client ?? m.dbDriver?.client?.config?.client) ===
-        'mssql';
-  return isMssql ? (isDeleted ? 1 : 0) : isDeleted;
+    typeof m.isMssql === 'boolean' ? m.isMssql : clientName === 'mssql';
+  const isOracle =
+    typeof m.isOracle === 'boolean' ? m.isOracle : clientName === 'oracledb';
+  return isMssql || isOracle ? (isDeleted ? 1 : 0) : isDeleted;
 }
 
 /**
@@ -944,6 +950,8 @@ export function deletedColValue(
  * `getAliasedSoftDeleteFilter` for the rollup/formula failure mode).
  *
  *  - MSSQL: `bit` has no boolean literal — use `0` / `1`.
+ *  - Oracle: booleans live in `NUMBER(1)` and `TRUE`/`FALSE` literals only
+ *    exist from 23ai — use `0` / `1`.
  *  - PG / MySQL / SQLite: `false` / `true` works.
  *
  * Primary user is the soft-delete (`__nc_deleted`) family of queries, but
@@ -956,15 +964,17 @@ export function boolSqlLiteral(
 ): string {
   const m = knexOrModel as Partial<{
     isMssql: boolean;
+    isOracle: boolean;
     dbDriver: { client: { config: { client?: unknown } } };
     client: { config: { client?: unknown } };
   }>;
+  const clientName =
+    m.client?.config?.client ?? m.dbDriver?.client?.config?.client;
   const isMssql =
-    typeof m.isMssql === 'boolean'
-      ? m.isMssql
-      : (m.client?.config?.client ?? m.dbDriver?.client?.config?.client) ===
-        'mssql';
-  if (isMssql) return value ? '1' : '0';
+    typeof m.isMssql === 'boolean' ? m.isMssql : clientName === 'mssql';
+  const isOracle =
+    typeof m.isOracle === 'boolean' ? m.isOracle : clientName === 'oracledb';
+  if (isMssql || isOracle) return value ? '1' : '0';
   return value ? 'true' : 'false';
 }
 
