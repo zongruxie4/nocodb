@@ -5,6 +5,7 @@ import {
   isDeletedCol,
   isLinksOrLTAR,
   isMMOrMMLike,
+  isNumericCol,
   isOrderCol,
   isSystemColumn,
   isVirtualCol,
@@ -194,6 +195,28 @@ export function getCompositePkValue(
     primaryKeys[0] &&
     (row[primaryKeys[0][pkIdOrTitleKey]] ?? row[primaryKeys[0].column_name])
   );
+}
+
+/**
+ * knex's oracledb dialect hardcodes the type of any value captured via a
+ * `RETURNING ... INTO` clause to `oracledb.STRING` (see the dialect's
+ * `prepBindings` — "Returning helper always use ROWID as string"). So a NUMBER
+ * pk captured from an INSERT comes back as e.g. `"401"` instead of `401`, while
+ * pg/mysql hand back native numbers. There is no driver/knex config knob for
+ * this (`fetchAsString`/`fetchTypeHandler` only affect SELECT fetches, not DML
+ * out-binds), so coerce numeric pk columns back to JS numbers at the capture
+ * site to keep the inserted-record shape consistent across dialects.
+ */
+export function coerceOracleReturnedPk(value: any, column: Column): any {
+  if (
+    typeof value === 'string' &&
+    value !== '' &&
+    isNumericCol(column) &&
+    !Number.isNaN(Number(value))
+  ) {
+    return Number(value);
+  }
+  return value;
 }
 
 export function getOppositeRelationType(

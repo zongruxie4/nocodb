@@ -1,4 +1,8 @@
-import { dataWrapper, populatePk } from 'src/helpers/dbHelpers';
+import {
+  coerceOracleReturnedPk,
+  dataWrapper,
+  populatePk,
+} from 'src/helpers/dbHelpers';
 import {
   isAttachment,
   isLinksOrLTAR,
@@ -524,7 +528,7 @@ export const baseModelInsert = (baseModel: IBaseModelSqlV2) => {
             .returning(pkCols.map((c) => c.column_name));
           responses = (rows ?? []).map((r) =>
             pkCols.reduce((acc, c) => {
-              acc[c.title] = r[c.column_name];
+              acc[c.title] = coerceOracleReturnedPk(r[c.column_name], c);
               return acc;
             }, {}),
           );

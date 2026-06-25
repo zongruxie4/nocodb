@@ -110,6 +110,7 @@ import {
   _wherePk,
   applyPaginate,
   boolSqlLiteral,
+  coerceOracleReturnedPk,
   dataWrapper,
   deletedColValue,
   displayValueMapKey,
@@ -3724,7 +3725,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
               .returning(pkCols.map((c) => c.column_name));
             responses = ((rows ?? []) as any[]).map((r) =>
               pkCols.reduce((acc, c) => {
-                acc[c.title] = r[c.column_name];
+                acc[c.title] = coerceOracleReturnedPk(r[c.column_name], c);
                 return acc;
               }, {}),
             );
@@ -8698,6 +8699,29 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
 
       if (!ncIsUndefined(data[column.column_name]) && !isInsertData) {
         updatedColIds.push(column.id);
+      }
+
+      // Oracle/mssql pin a session datetime format (NLS / CONVERT) that rejects
+      // the `+00:00` offset token carried by raw V1/V2 datetime payloads
+      // (ORA-01830 / mssql convert error). The insert path normalizes this via
+      // handleValidateBulkInsert's `formatDate`, but the update path (this
+      // function) otherwise forwards the offset verbatim. Format DateTime
+      // offset-less here for the non-V3 update path — V3 goes through
+      // parseUserInput below, and inserts (isInsertData) are already normalized
+      // upstream, so neither double-formats.
+      if (
+        !isInsertData &&
+        (this.isOracle || this.isMssql) &&
+        this.context.api_version !== NcApiVersion.V3 &&
+        column.uidt === UITypes.DateTime &&
+        !ncIsUndefined(data[column.column_name]) &&
+        !ncIsNull(data[column.column_name]) &&
+        dayjs(data[column.column_name]).isValid()
+      ) {
+        data[column.column_name] = this.formatDate(
+          data[column.column_name],
+          column,
+        );
       }
 
       if (
