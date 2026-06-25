@@ -3978,7 +3978,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
             val = JSON.stringify(val);
           }
           if (col.uidt === UITypes.DateTime && dayjs(val).isValid()) {
-            val = this.formatDate(val);
+            val = this.formatDate(val, col);
           }
           if (col.uidt === UITypes.Duration) {
             if (col.meta?.duration !== undefined) {
@@ -4018,12 +4018,24 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
   }
 
   // Helper method to format date
-  private formatDate(val: string): Knex.Raw | string {
+  private formatDate(val: string, col?: Column): Knex.Raw | string {
     const { isMySQL, isSqlite, isPg, isMssql } = this.clientMeta;
     if (val.indexOf('-') < 0 && val.indexOf('+') < 0 && val.slice(-1) !== 'Z') {
       // if no timezone is given,
       // then append +00:00 to make it as UTC
       val += '+00:00';
+    }
+    if (this.isOracle) {
+      // Oracle parses string binds with the session NLS formats pinned at
+      // connection time ('YYYY-MM-DD HH24:MI:SS[.FF]'), which carry no offset
+      // token — the generic `+00:00` suffix raises ORA-01830/ORA-01861. Emit
+      // the UTC wall-clock offset-less. DATE has second precision (a fractional
+      // part raises ORA-01830); TIMESTAMP accepts `.SSS` via the FF token, so
+      // keep sub-second data there. Mirrors DateTimeOracleHandler.parseUserInput.
+      const dt = (col?.dt || '').toLowerCase();
+      return dayjs(val)
+        .utc()
+        .format(dt === 'date' ? 'YYYY-MM-DD HH:mm:ss' : 'YYYY-MM-DD HH:mm:ss.SSS');
     }
     if (isMssql) {
       // T-SQL `datetime` / `datetime2` types reject the `+00:00` offset
@@ -6935,7 +6947,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
       try {
         return await trx.raw(query);
       } catch (e) {
-        console.log('[oracle][base-model]', query);
+        console.error('[oracle][base-model]', query);
         throw e;
       }
     } else if (SELECT_REGEX.test(query)) {
