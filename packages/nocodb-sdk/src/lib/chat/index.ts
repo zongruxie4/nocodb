@@ -122,6 +122,7 @@ export interface ChatMessageType {
   output_tokens?: number;
   bt_span_id?: string | null;
   created_at?: string;
+  uiContextRecord?: { tableId: string; recordId: string; recordTitle?: string };
 }
 
 export const NC_NEW_SESSION = 'NC_SESSION';
@@ -132,6 +133,8 @@ export interface ChatUIContext {
   viewId?: string;
   dashboardId?: string;
   documentId?: string;
+  recordId?: string;
+  recordTitle?: string;
 }
 
 export interface ChatSendMessageType {
