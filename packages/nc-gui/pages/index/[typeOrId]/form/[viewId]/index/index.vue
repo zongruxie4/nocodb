@@ -115,6 +115,14 @@ const { message: templatedMessage } = useTemplatedMessage(
       class="flex-none"
     />
 
+    <SmartsheetFormDraftRestoredBanner
+      v-if="sharedFormView && !submitted && !notFound && draftWasRestored"
+      :restored-at="draftRestoredAt"
+      class="w-full mt-6 -mb-3"
+      @discard="discardDraft"
+      @close="dismissDraftBanner"
+    />
+
     <div
       class="transition-all duration-300 ease-in relative flex flex-col justify-center gap-2 w-full my-6 bg-nc-bg-default rounded-3xl border-1 border-nc-border-gray-medium px-4 py-8 lg:p-12 md:(p-8)"
     >
@@ -202,13 +210,6 @@ const { message: templatedMessage } = useTemplatedMessage(
           </GeneralOverlay>
 
           <div class="nc-form-wrapper">
-            <SmartsheetFormDraftRestoredBanner
-              v-if="draftWasRestored"
-              :restored-at="draftRestoredAt"
-              class="mb-4"
-              @discard="discardDraft"
-              @close="dismissDraftBanner"
-            />
             <a-form :model="formState">
               <div class="nc-form h-full">
                 <div class="flex flex-col gap-3 md:gap-6">
