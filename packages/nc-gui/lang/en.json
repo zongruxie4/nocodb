@@ -1967,6 +1967,8 @@
     "baseList": "Base List",
     "crossBase": "Link to external base",
     "aiChat": "AI Chat",
+    "askAiAboutRecord": "Ask AI about this record",
+    "unnamedRecord": "Unnamed record",
     "newChat": "New Chat",
     "recentChats": "Recent",
     "chats": "Chats",

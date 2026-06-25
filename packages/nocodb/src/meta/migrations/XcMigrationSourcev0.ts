@@ -76,6 +76,7 @@ import * as nc_202606180000_form_view_email_text from './v0/nc_202606180000_form
 import * as nc_202606181200_add_group_by_enabled_to_gantt from './v0/nc_202606181200_add_group_by_enabled_to_gantt';
 import * as nc_202606191200_sandbox_production_readiness from './v0/nc_202606191200_sandbox_production_readiness';
 import * as nc_202606230001_chat_created_files from './v0/nc_202606230001_chat_created_files';
+import * as nc_202606240001_chat_ui_context_record from './v0/nc_202606240001_chat_ui_context_record';
 
 // Create a custom migration source class
 export default class XcMigrationSourcev0 {
@@ -163,6 +164,7 @@ export default class XcMigrationSourcev0 {
       'nc_202606181200_add_group_by_enabled_to_gantt',
       'nc_202606191200_sandbox_production_readiness',
       'nc_202606230001_chat_created_files',
+      'nc_202606240001_chat_ui_context_record',
     ]);
   }
 
@@ -328,6 +330,8 @@ export default class XcMigrationSourcev0 {
         return nc_202606191200_sandbox_production_readiness;
       case 'nc_202606230001_chat_created_files':
         return nc_202606230001_chat_created_files;
+      case 'nc_202606240001_chat_ui_context_record':
+        return nc_202606240001_chat_ui_context_record;
     }
   }
 }
