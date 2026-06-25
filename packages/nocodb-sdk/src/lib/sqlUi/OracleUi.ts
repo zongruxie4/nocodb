@@ -376,6 +376,18 @@ export class OracleUi implements SqlUi {
   }
 
   static getAbstractType(col): any {
+    // Oracle has no time-only type — a `Time` column is physically stored as
+    // DATE (see getDataTypeForUiType), which would otherwise resolve to the
+    // 'datetime' abstract type below. pg/mysql derive 'time' from their native
+    // `time` dt; here the authoritative signal is the persisted uidt. Honor it
+    // so a Time column reports the 'time' abstract type (drives the frontend
+    // Time picker / Time filter widget). Raw introspection passes no uidt, so
+    // this guard only fires for already-typed NocoDB columns — a bare DATE with
+    // no uidt still falls through to 'datetime'.
+    if (col.uidt === UITypes.Time) {
+      return 'time';
+    }
+
     const dt = (col.dt || col.dt_s)?.toLowerCase();
     switch (dt) {
       // NUMBER scale decides integer vs float: explicit scale 0 (NUMBER(p),
