@@ -3,6 +3,10 @@ import UITypes from '~/lib/UITypes';
 import { FormulaDataTypes } from '~/lib/formula/enums';
 import { parseProp } from '~/lib/helperFunctions';
 import { resolveLookupLeafColumn } from './get-lookup-column-type';
+import {
+  DisplayFormatConfig,
+  getEffectiveDisplayColumn,
+} from './get-effective-display-column';
 
 // Number result types whose stored value IS the number shown — reformatting them as
 // Decimal/Currency/Percent only changes presentation, never the meaning.
@@ -112,4 +116,41 @@ export function getLookupResultType(params: {
   visitedIds?: Set<string>;
 }): UITypes | null {
   return getColumnResultType(resolveLookupLeafColumn(params));
+}
+
+/**
+ * Build the effective display column for a Lookup, applying the saved
+ * `meta.display_type` override ONLY when it is still valid for the child's CURRENT
+ * result type. If the looked-up field's type later changes (e.g. Number -> Text, or
+ * the relation is re-pointed) so the override no longer applies, the override is
+ * ignored and the child column renders natively — preventing a stale override from
+ * producing blank/NaN output at render or on export. This guards every apply-site
+ * (SDK parse, canvas, virtual cell, dataUtils, backend serialize) in one place.
+ *
+ * Computed children (Lookup/Formula/Rollup) are treated permissively: their true leaf
+ * result type can't always be resolved from the child column alone (e.g. unloaded
+ * colOptions on the backend, or a nested lookup), so the override is applied for them
+ * as before rather than risk dropping a valid override.
+ */
+export function getEffectiveLookupColumn(
+  config: DisplayFormatConfig | null | undefined,
+  childColumn: ColumnType
+): ColumnType {
+  if (!childColumn || !config?.display_type) return childColumn;
+
+  const isComputedChild = [
+    UITypes.Lookup,
+    UITypes.Formula,
+    UITypes.Rollup,
+  ].includes(childColumn.uidt as UITypes);
+
+  const stillApplicable =
+    isComputedChild ||
+    getUITypesForLookupResultType(getColumnResultType(childColumn)).includes(
+      config.display_type as UITypes
+    );
+
+  return stillApplicable
+    ? getEffectiveDisplayColumn(config, childColumn)
+    : childColumn;
 }

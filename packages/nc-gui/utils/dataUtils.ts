@@ -3,6 +3,7 @@ import {
   UITypes,
   dateFormats,
   getEffectiveDisplayColumn,
+  getEffectiveLookupColumn,
   getRenderAsTextFunForUiType,
   getRollupColumnMeta,
   integerPreservingRollupFunctions,
@@ -582,7 +583,7 @@ export const getLookupValue = (modelValue: string | null | number | Array<any>, 
 
   // Apply the lookup column's own formatting override (meta.display_type) on top of
   // the resolved child column so number/date lookups honour the configured format.
-  const effectiveChildColumn = childColumn ? getEffectiveDisplayColumn(col?.meta, childColumn) : childColumn
+  const effectiveChildColumn = childColumn ? getEffectiveLookupColumn(col?.meta, childColumn) : childColumn
 
   if (Array.isArray(modelValue)) {
     return modelValue

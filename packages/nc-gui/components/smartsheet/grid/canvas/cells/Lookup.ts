@@ -2,7 +2,7 @@ import {
   NC_ERROR_SENTINEL,
   RelationTypes,
   UITypes,
-  getEffectiveDisplayColumn,
+  getEffectiveLookupColumn,
   getMetaWithCompositeKey,
   isBtLikeV2Junction,
   isLinksOrLTAR,
@@ -81,7 +81,7 @@ export const LookupCellRenderer: CellRenderer = {
     // meta.display_column_meta) on top of the resolved child column. For number/date
     // result types this swaps in the chosen display type + format meta; otherwise the
     // child column is returned unchanged so its native formatting is inherited.
-    const effectiveLookupColumn = getEffectiveDisplayColumn(parseProp(column.meta), lookupColumn)
+    const effectiveLookupColumn = getEffectiveLookupColumn(parseProp(column.meta), lookupColumn)
 
     y =
       y +

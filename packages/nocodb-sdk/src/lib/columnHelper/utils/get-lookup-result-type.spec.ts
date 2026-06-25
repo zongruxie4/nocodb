@@ -1,5 +1,6 @@
 import {
   getColumnResultType,
+  getEffectiveLookupColumn,
   getLookupResultType,
   getUITypesForLookupResultType,
 } from './get-lookup-result-type';
@@ -266,5 +267,51 @@ describe('getLookupResultType', () => {
         },
       })
     ).toBe(UITypes.Date);
+  });
+});
+
+describe('getEffectiveLookupColumn (stale-override guard)', () => {
+  const lookupMeta = (displayType: UITypes) => ({
+    display_type: displayType,
+    display_column_meta: { meta: { precision: 2 }, custom: {} },
+  });
+
+  it('returns the child unchanged when no display_type is set', () => {
+    const child = { id: 'c', uidt: UITypes.Number } as ColumnType;
+    expect(getEffectiveLookupColumn({}, child)).toBe(child);
+    expect(getEffectiveLookupColumn(null, child)).toBe(child);
+  });
+
+  it('applies the override when still valid for the child result type', () => {
+    const child = { id: 'c', uidt: UITypes.Number } as ColumnType;
+    const eff = getEffectiveLookupColumn(lookupMeta(UITypes.Currency), child);
+    expect(eff).not.toBe(child);
+    expect(eff.uidt).toBe(UITypes.Currency);
+  });
+
+  it('IGNORES a stale override when the child type no longer supports it', () => {
+    // saved Currency override, but the looked-up field is now text
+    const child = { id: 'c', uidt: UITypes.SingleLineText } as ColumnType;
+    expect(getEffectiveLookupColumn(lookupMeta(UITypes.Currency), child)).toBe(child);
+  });
+
+  it('ignores a stale date override on a now-number child', () => {
+    const child = { id: 'c', uidt: UITypes.Number } as ColumnType;
+    expect(getEffectiveLookupColumn(lookupMeta(UITypes.Date), child)).toBe(child);
+  });
+
+  it('applies a Date override to a Date child but not a DateTime-only override', () => {
+    const child = { id: 'c', uidt: UITypes.Date } as ColumnType;
+    expect(getEffectiveLookupColumn(lookupMeta(UITypes.Date), child).uidt).toBe(UITypes.Date);
+    // Date child can't be formatted as Time (no time component)
+    expect(getEffectiveLookupColumn(lookupMeta(UITypes.Time), child)).toBe(child);
+  });
+
+  it('is permissive for computed children (Formula/Rollup/Lookup) — leaf not resolvable here', () => {
+    for (const uidt of [UITypes.Formula, UITypes.Rollup, UITypes.Lookup]) {
+      const child = { id: 'c', uidt } as ColumnType;
+      const eff = getEffectiveLookupColumn(lookupMeta(UITypes.Currency), child);
+      expect(eff.uidt).toBe(UITypes.Currency);
+    }
   });
 });

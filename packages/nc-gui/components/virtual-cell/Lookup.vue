@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { type ColumnType, type LinkToAnotherRecordType, type LookupType, isBtLikeV2Junction, isMMOrMMLike } from 'nocodb-sdk'
-import { FormulaDataTypes, RelationTypes, UITypes, getEffectiveDisplayColumn, isVirtualCol } from 'nocodb-sdk'
+import { FormulaDataTypes, RelationTypes, UITypes, getEffectiveLookupColumn, isVirtualCol } from 'nocodb-sdk'
 
 const { getMeta, getMetaByKey } = useMetas()
 
@@ -100,7 +100,7 @@ const lookupColumn = computed(
 // meta.display_column_meta) on top of the resolved child column. Returns the same
 // child column reference when no override is configured (inherit-by-default).
 const effectiveLookupColumn = computed(() =>
-  lookupColumn.value ? getEffectiveDisplayColumn(column.value?.meta, lookupColumn.value) : lookupColumn.value,
+  lookupColumn.value ? getEffectiveLookupColumn(column.value?.meta, lookupColumn.value) : lookupColumn.value,
 )
 
 // True when a number/date formatting override is active — the value then renders as
