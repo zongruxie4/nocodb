@@ -588,7 +588,11 @@ knex.QueryBuilder.extend(
  * Append concat to knex query builder
  */
 knex.QueryBuilder.extend('concat', function (cn: any) {
-  switch (this?.client?.config?.client) {
+  const clientName =
+    typeof this?.client?.config?.client === 'string'
+      ? this.client.config.client
+      : this?.client?.driverName ?? this?.client?.dialect;
+  switch (clientName) {
     case 'pg':
       this.select(
         this.client.raw(`STRING_AGG(??::character varying , ',')`, [cn]),
