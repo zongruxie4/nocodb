@@ -718,6 +718,32 @@ export default async function generateLookupSelectQuery({
             .from(selectQb.as(subQueryAlias)),
           applyCte,
         };
+      } else if (baseModelSqlv2.isOracle) {
+        // Match the JSON-array-string shape of pg's `json_agg(col)::text` /
+        // mysql's `JSON_ARRAYAGG(col)`. `NULL ON NULL` keeps null elements
+        // for pg parity (Oracle defaults to ABSENT ON NULL). RETURNING
+        // VARCHAR2(4000) keeps the result usable as a sort/group key — CLOB
+        // output can't be a comparison key (ORA-22848); an oversized
+        // aggregate surfaces Oracle's own ORA-40478 rather than silently
+        // truncating. CLOB-backed lookup values (LongText) are pre-shortened
+        // via DBMS_LOB.SUBSTR — JSON_ARRAYAGG rejects LOB inputs when
+        // returning VARCHAR2.
+        const aggInput =
+          (lookupColumn.dt ?? '').toLowerCase() === 'clob' ||
+          (lookupColumn.dt ?? '').toLowerCase() === 'nclob'
+            ? knex.raw('DBMS_LOB.SUBSTR(??, 2000, 1)', [lookupColumn.id])
+            : knex.raw('??', [lookupColumn.id]);
+        return {
+          builder: knex
+            .select(
+              knex.raw(
+                'JSON_ARRAYAGG(? NULL ON NULL RETURNING VARCHAR2(4000))',
+                [aggInput],
+              ),
+            )
+            .from(selectQb.as(subQueryAlias)),
+          applyCte,
+        };
       }
 
       NcError.get(context).notImplemented(

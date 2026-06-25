@@ -74,10 +74,19 @@ export const baseModelInsert = (baseModel: IBaseModelSqlV2) => {
       // Without this, mssql falls into the generic else-branch (shaped
       // for mysql's `insertId`) and `extractCompositePK` returns '' →
       // ERR_INVALID_PK_VALUE.
-      if ((baseModel.isPg || baseModel.isMssql) && baseModel.model.primaryKey) {
-        query.returning(
-          `${baseModel.model.primaryKey.column_name} as ${baseModel.model.primaryKey.id}`,
-        );
+      if (
+        (baseModel.isPg || baseModel.isMssql || baseModel.isOracle) &&
+        baseModel.model.primaryKey
+      ) {
+        if (baseModel.isOracle) {
+          // Oracle's RETURNING…INTO rejects column aliases (ORA-00925) —
+          // return the bare column and remap to the col-id key below.
+          query.returning(baseModel.model.primaryKey.column_name);
+        } else {
+          query.returning(
+            `${baseModel.model.primaryKey.column_name} as ${baseModel.model.primaryKey.id}`,
+          );
+        }
 
         if (baseModel.isMssql) {
           // MSSQL: AI columns are stripped above (line ~33), so
@@ -106,6 +115,13 @@ export const baseModelInsert = (baseModel: IBaseModelSqlV2) => {
           }
         } else {
           response = await baseModel.execAndParse(query, null, { raw: true });
+        }
+
+        if (baseModel.isOracle && Array.isArray(response)) {
+          response = response.map((r) => ({
+            [baseModel.model.primaryKey.id]:
+              r[baseModel.model.primaryKey.column_name],
+          }));
         }
       }
 
@@ -503,6 +519,23 @@ export const baseModelInsert = (baseModel: IBaseModelSqlV2) => {
             });
             await trx.raw(sql);
           }
+        } else if (
+          (!raw || capturePks) &&
+          baseModel.isOracle &&
+          baseModel.model.primaryKeys?.length
+        ) {
+          // Oracle RETURNING rejects aliases (ORA-00925) — return the bare
+          // pk columns and remap to the title-keyed shape downstream expects.
+          const pkCols = baseModel.model.primaryKeys;
+          const rows = await trx
+            .batchInsert(baseModel.tnPath, insertDatas, chunkSize)
+            .returning(pkCols.map((c) => c.column_name));
+          responses = (rows ?? []).map((r) =>
+            pkCols.reduce((acc, c) => {
+              acc[c.title] = r[c.column_name];
+              return acc;
+            }, {}),
+          );
         } else {
           responses =
             (!raw || capturePks) && baseModel.isPg

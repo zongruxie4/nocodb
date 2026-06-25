@@ -316,7 +316,7 @@ export class DatasService {
           );
         } catch (e) {
           if (e instanceof NcBaseError || e instanceof NcSDKErrorV2) throw e;
-          this.logger.error('Error fetching data', e);
+          this.logger.error(`Error fetching data: ${e?.message}`, e?.stack);
           NcError.get(context).internalServerError(
             'Please check server log for more details',
           );

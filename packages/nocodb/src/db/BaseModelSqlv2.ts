@@ -2106,6 +2106,8 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
       qb.orderByRaw('RANDOM()');
     } else if (this.isMssql) {
       qb.orderByRaw('NEWID()');
+    } else if (this.isOracle) {
+      qb.orderByRaw('DBMS_RANDOM.VALUE');
     }
   }
 
