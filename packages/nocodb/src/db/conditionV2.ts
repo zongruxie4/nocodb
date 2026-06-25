@@ -486,6 +486,10 @@ const parseConditionV2 = async (
                 }
                 if (knex.clientType() === 'pg') {
                   qb = qb.where(knex.raw('??::text ilike ?', [field, val]));
+                } else if (knex.clientType() === 'oracledb') {
+                  qb = qb.where(
+                    knex.raw('UPPER(??) like UPPER(?)', [field, val]),
+                  );
                 } else {
                   qb = qb.where(field, 'like', val);
                 }
@@ -509,6 +513,11 @@ const parseConditionV2 = async (
                   if (knex.clientType() === 'pg') {
                     nestedQb.where(
                       knex.raw('??::text not ilike ?', [field, val]),
+                    );
+                  } else if (knex.clientType() === 'oracledb') {
+                    // Case-insensitive to match pg/MySQL — see `like` above.
+                    nestedQb.whereNot(
+                      knex.raw('UPPER(??) like UPPER(?)', [field, val]),
                     );
                   } else {
                     nestedQb.whereNot(field, 'like', val);
@@ -649,6 +658,17 @@ const parseConditionV2 = async (
               qb = qb.where(field, val);
               break;
             case 'notempty':
+              // Oracle stores '' as NULL, so no row can hold the empty string —
+              // excluding '' excludes nothing and every row qualifies. The
+              // generic `<> '' OR IS NULL` shape would instead match only NULL
+              // rows (`field <> NULL` is never true), so it silently drops all
+              // non-null values. Mirror GenericFieldHandler.filterNotempty's
+              // Oracle branch and match every row. (`1 = 1`, not `TRUE` —
+              // Oracle has no boolean literal before 23ai.)
+              if (knex.clientType() === 'oracledb') {
+                qb = qb.whereRaw('1 = 1');
+                break;
+              }
               if (column.uidt === UITypes.Formula) {
                 [field, val] = [val, field];
               }

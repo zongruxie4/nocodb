@@ -206,6 +206,24 @@ export const selectObject = (baseModel: IBaseModelSqlV2, logger: Logger) => {
             );
           }
           break;
+        case UITypes.Time: {
+          if (baseModel.isOracle) {
+            const columnName = await getColumnName(
+              baseModel.context,
+              column,
+              _columns || (await baseModel.model.getColumns(baseModel.context)),
+            );
+            res[sanitize(getAs(column) || columnName)] = baseModel.dbDriver.raw(
+              `TO_CHAR(??, 'HH24:MI:SS')`,
+              [`${sanitize(alias || baseModel.tnPath)}.${columnName}`],
+            );
+          } else {
+            res[sanitize(getAs(column) || column.column_name)] = sanitize(
+              `${alias || baseModel.tnPath}.${column.column_name}`,
+            );
+          }
+          break;
+        }
         case UITypes.LinkToAnotherRecord:
           break;
         case UITypes.Lookup: {

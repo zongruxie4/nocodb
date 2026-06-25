@@ -28,19 +28,42 @@ const { layout, elements } = useErdElements(tables, config)
 
 const showSkeleton = computed(() => viewport.value.zoom < 0.15)
 
+// Fit the whole diagram into view. Allow zooming out far enough that every
+// node is on-screen (large schemas like sakila spread wide under the LR dagre
+// layout), but cap zoom-in so small graphs don't blow up. `minZoom: 0.2` stays
+// above the 0.15 skeleton threshold so the fit never collapses nodes into
+// skeleton mode. Previously this kept the current zoom (1) and only
+// re-centered, leaving outer nodes off-screen — present in the DOM but hidden.
+//
+// Run instantly (duration 0): an animated fit transits through intermediate
+// zoom levels, and if it dips below 0.15 mid-animation it flips `showSkeleton`
+// → re-layout → fights this fit. A snap fit lands directly on the target zoom.
+function fitWholeView() {
+  fitView({
+    duration: 0,
+    padding: 0.1,
+    minZoom: 0.2,
+    maxZoom: 1,
+  })
+}
+
 async function init() {
   await layout(showSkeleton.value)
-  // Center elements without changing zoom level
   await nextTick()
-  setTimeout(() => {
-    fitView({
-      duration: 200,
-      padding: 0.1,
-      // Don't change zoom - keep current zoom level but center the content
-      minZoom: viewport.value.zoom || 1,
-      maxZoom: viewport.value.zoom || 1,
-    })
-  }, 100)
+  // `fitView` needs measured node dimensions; right after mount they can still
+  // be pending, so a single fit sometimes computes off bounds (the viewport
+  // stays at zoom 1 and outer nodes render hidden). Retry across a few frames
+  // until the viewport actually leaves the initial zoom, making the framing
+  // deterministic regardless of mount/measure timing.
+  let attempts = 0
+  const tryFit = () => {
+    fitWholeView()
+    attempts += 1
+    if (viewport.value.zoom >= 1 && attempts < 12) {
+      setTimeout(tryFit, 80)
+    }
+  }
+  setTimeout(tryFit, 80)
 }
 
 function zoomIn(nodeId?: string) {

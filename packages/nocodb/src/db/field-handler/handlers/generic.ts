@@ -351,6 +351,13 @@ export class GenericFieldHandler
               subQb.where(sourceField as any, '');
             subQb.whereNull(sourceField as any);
           });
+        } else if (knex.clientType() === 'oracledb') {
+          // Oracle's LIKE is case-sensitive; pg (via `like`→`ilike`) and
+          // MySQL (default CI collation) match case-insensitively. UPPER both
+          // sides so Oracle text LIKE filters behave the same cross-dialect.
+          qb.where(
+            knex.raw('UPPER(??) like UPPER(?)', [sourceField, `%${val}%`]),
+          );
         } else {
           qb.where(knex.raw('?? like ?', [sourceField, `%${val}%`]));
         }
@@ -394,7 +401,15 @@ export class GenericFieldHandler
         } else {
           val = val.startsWith('%') || val.endsWith('%') ? val : `%${val}%`;
 
-          qb.whereNot(knex.raw(`?? like ?`, [sourceField, val]));
+          // Oracle LIKE is case-sensitive — UPPER both sides to match the
+          // case-insensitive behavior of pg (`ilike`) / MySQL. See filterLike.
+          if (knex.clientType() === 'oracledb') {
+            qb.whereNot(
+              knex.raw(`UPPER(??) like UPPER(?)`, [sourceField, val]),
+            );
+          } else {
+            qb.whereNot(knex.raw(`?? like ?`, [sourceField, val]));
+          }
           if (val !== '%%') {
             // if value is not empty, empty or null should be included
             if (!emptyAsNull) qb.orWhere(sourceField as any, '');

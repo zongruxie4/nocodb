@@ -2909,9 +2909,22 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
     // const driver = trx ? trx : await this.dbDriver.transaction();
     try {
       const source = await this.getSource();
-      await populatePk(this.context, this.model, data);
 
       const columns = await this.model.getColumns(this.context);
+
+      // Exclude auto-increment columns from the insert body so the DB assigns
+      // them.
+      const dbDataWrapper = dataWrapper(data);
+      for (const col of columns) {
+        if (col.ai) {
+          const keyName = dbDataWrapper.getColumnKeyName(col);
+          if (data[keyName]) {
+            delete data[keyName];
+          }
+        }
+      }
+
+      await populatePk(this.context, this.model, data);
 
       const insertObj = await this.model.mapAliasToColumn(
         this.context,
