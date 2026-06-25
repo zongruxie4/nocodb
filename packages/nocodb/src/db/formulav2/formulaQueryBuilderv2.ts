@@ -229,6 +229,23 @@ async function _formulaQueryBuilder(params: FormulaQueryBuilderBaseParams) {
                   .wrap('(', ')'),
               };
             };
+          } else if (
+            knex.clientType() === 'oracledb' &&
+            (refCol.dt ?? '').toLowerCase().includes('time zone')
+          ) {
+            aliasToColumn[col.id] = async (): Promise<any> => {
+              return {
+                // Oracle TIMESTAMP WITH [LOCAL] TIME ZONE: normalize to a plain
+                // UTC timestamp so date formulas (DATEADD, …) operate on the UTC
+                // instant — mirroring the read path and pg/mysql. Referencing the
+                // column raw makes the formula compute on the stored
+                // wall-clock+offset, so the result renders an offset off in the
+                // browser timezone.
+                builder: knex
+                  .raw(`SYS_EXTRACT_UTC(??)`, [refCol.column_name])
+                  .wrap('(', ')'),
+              };
+            };
           } else {
             aliasToColumn[col.id] = () =>
               Promise.resolve({ builder: refCol.column_name });
