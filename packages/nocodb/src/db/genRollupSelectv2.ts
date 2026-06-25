@@ -138,6 +138,12 @@ export default async function genRollupSelectv2(param: {
     // subquery (virtual column, so `dt` is null). Drives the MSSQL bit→FLOAT
     // cast below, which would otherwise only fire for direct `bit` columns.
     let selectValueIsBoolean = false;
+    // Tracks whether the resolved value is a string-typed Formula. On Oracle a
+    // string Formula lowers to a CLOB (CONCAT wraps args in TO_CLOB to dodge the
+    // VARCHAR2 4000-byte concat cap), and CLOB is rejected by COUNT / COUNT
+    // DISTINCT / MIN / MAX (ORA-22849). Drives the CLOB→VARCHAR2 normalization
+    // below.
+    let selectValueIsString = false;
     if (rollupColumn.uidt === UITypes.Formula) {
       // `rollupColumn` lives in the related table — for a cross-base rollup its
       // column options (the formula AST) are stored under the related base, so
@@ -192,6 +198,8 @@ export default async function genRollupSelectv2(param: {
       // `bit`-typed expression on MSSQL — flag it so the bit→FLOAT cast fires.
       selectValueIsBoolean =
         formulOption.getParsedTree()?.dataType === FormulaDataTypes.BOOLEAN;
+      selectValueIsString =
+        formulOption.getParsedTree()?.dataType === FormulaDataTypes.STRING;
     } else if ([UITypes.Rollup].includes(rollupColumn.uidt)) {
       const knex = refBaseModel.dbDriver;
 
@@ -295,6 +303,24 @@ export default async function genRollupSelectv2(param: {
       qb.select({ [NC_ROLLUP_VAL_ALIAS]: selectColumnName });
       profiler.log('applyFunction done (mssql derived-agg deferred)');
       return;
+    }
+
+    // Oracle: a string Formula lowers to a CLOB, which COUNT / COUNT DISTINCT /
+    // MIN / MAX all reject (ORA-22849 — "Type CLOB is not supported for this
+    // function or operator"). Normalize it to a comparable VARCHAR2 via
+    // DBMS_LOB.SUBSTR(TO_CLOB(x), 4000, 1): TO_CLOB is an identity no-op on an
+    // already-CLOB / VARCHAR2 operand, and SUBSTR yields VARCHAR2(4000). The
+    // sum/avg family is numeric (never CLOB) so it is intentionally excluded.
+    if (
+      baseModelSqlv2.isOracle &&
+      selectValueIsString &&
+      ['count', 'countDistinct', 'min', 'max'].includes(
+        columnOptions.rollup_function as string,
+      )
+    ) {
+      selectColumnName = knex.raw('DBMS_LOB.SUBSTR(TO_CLOB(??), 4000, 1)', [
+        selectColumnName,
+      ]);
     }
 
     if (
