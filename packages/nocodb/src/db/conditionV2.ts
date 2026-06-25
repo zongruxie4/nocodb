@@ -734,10 +734,21 @@ const parseConditionV2 = async (
               });
               break;
             case 'btw':
-              qb = qb.whereBetween(field, val.split(','));
+              // `val` is normally a "lower,upper" CSV string, but a non-string
+              // value (array/number) can reach here via filterArrJson or the
+              // numeric coercion above — guard like the anyof/allof branch so
+              // `.split` never throws at query-compile time. An array is passed
+              // straight through (whereBetween already wants [lower, upper]).
+              qb = qb.whereBetween(
+                field,
+                Array.isArray(val) ? val : `${val ?? ''}`.split(','),
+              );
               break;
             case 'nbtw':
-              qb = qb.whereNotBetween(field, val.split(','));
+              qb = qb.whereNotBetween(
+                field,
+                Array.isArray(val) ? val : `${val ?? ''}`.split(','),
+              );
               break;
             // `isWithin` is date-only (pastWeek/Month/Year/NumberOfDays and
             // nextWeek/Month/Year/NumberOfDays). DateTime/Date/CreatedTime/
