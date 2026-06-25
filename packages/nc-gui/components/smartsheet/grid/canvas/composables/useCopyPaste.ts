@@ -620,9 +620,12 @@ export function useCopyPaste({
 
         // Execute text-based LTAR link-by-display-value operations
         if (textLtarOps.length) {
-          try {
-            const entries = textLtarOps.map(({ columnId, rowId, displayValues }) => ({ columnId, rowId, displayValues }))
+          const entries = textLtarOps.map(({ columnId, rowId, displayValues }) => ({ columnId, rowId, displayValues }))
 
+          // Number of entries (rows) already persisted by completed batches
+          let savedCount = 0
+
+          try {
             // Chunk into batches to stay within the backend per-request entry cap
             for (let i = 0; i < entries.length; i += LINK_BY_DISPLAY_VALUE_BATCH_SIZE) {
               await $api.internal.postOperation(
@@ -635,14 +638,30 @@ export function useCopyPaste({
                 },
                 entries.slice(i, i + LINK_BY_DISPLAY_VALUE_BATCH_SIZE),
               )
+
+              savedCount = Math.min(i + LINK_BY_DISPLAY_VALUE_BATCH_SIZE, entries.length)
             }
 
             reloadViewDataHook?.trigger({ shouldShowLoading: false })
           } catch (e: any) {
-            for (const op of textLtarOps) {
+            // Revert only the rows that were not persisted; keep the already-saved ones
+            // so the user can re-paste just the remainder instead of starting over.
+            for (const op of textLtarOps.slice(savedCount)) {
               op.rowRef.row[op.columnTitle] = op.oldValue
             }
-            message.error(await extractSdkResponseErrorMsg(e))
+
+            const errMsg = await extractSdkResponseErrorMsg(e)
+
+            if (savedCount > 0) {
+              // Reflect the persisted batches in the grid before reporting the failure
+              reloadViewDataHook?.trigger({ shouldShowLoading: false })
+
+              message.error(
+                t('msg.error.pasteLinkPartiallySaved', { saved: savedCount, total: entries.length, error: errMsg }),
+              )
+            } else {
+              message.error(errMsg)
+            }
           }
         }
 
