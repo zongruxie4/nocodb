@@ -1441,6 +1441,18 @@
     "manyToOne": "Many to One"
   },
   "labels": {
+    "chatImport": {
+      "columnCount": "{count} column | {count} columns",
+      "createNewTable": "Create a new table",
+      "useExistingTable": "Add to an existing table",
+      "tableName": "Table name",
+      "selectTable": "Select a table",
+      "columnMapping": "Columns to import",
+      "dontImport": "Don't import",
+      "importCount": "Import | Import {count} column | Import {count} columns",
+      "summaryNew": "Importing into a new table \"{name}\"",
+      "summaryExisting": "Importing into \"{name}\""
+    },
     "csvImport": {
       "newImport": "New Import",
       "viewImportHistory": "View Import History",
