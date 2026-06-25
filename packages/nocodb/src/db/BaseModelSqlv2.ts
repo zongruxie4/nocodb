@@ -99,6 +99,7 @@ import {
 } from '~/db/BaseModelSqlv2/add-remove-links';
 import { groupBy as baseModelGroupBy } from '~/db/BaseModelSqlv2/group-by';
 import conditionV2 from '~/db/conditionV2';
+import { DBQueryClient } from '~/dbQueryClient';
 import formulaQueryBuilderv2 from '~/db/formulav2/formulaQueryBuilderv2';
 import { RelationManager } from '~/db/relation-manager';
 import sortV2 from '~/db/sortV2';
@@ -145,7 +146,6 @@ import {
 import Noco from '~/Noco';
 import { HANDLE_WEBHOOK } from '~/services/hook-handler.service';
 import {
-  batchUpdate,
   extractColsMetaForAudit,
   extractExcludedColumnNames,
   generateAuditV1Payload,
@@ -4223,12 +4223,12 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
           this.model.primaryKeys.length === 1 &&
           (this.isPg || this.isMySQL || this.isSqlite || this.isMssql)
         ) {
-          await batchUpdate(
-            transaction,
-            this.tnPath,
-            toBeUpdated.map((o) => o.d),
-            this.model.primaryKey.column_name,
-          );
+          await DBQueryClient.fromKnex(transaction).batchUpdate({
+            knex: transaction,
+            tnPath: this.tnPath,
+            rows: toBeUpdated.map((o) => o.d),
+            pkColumnName: this.model.primaryKey.column_name,
+          });
         } else {
           for (const o of toBeUpdated) {
             await transaction(this.tnPath).update(o.d).where(o.wherePk);

@@ -1,5 +1,6 @@
 import { ClientType } from 'nocodb-sdk';
 import type { Knex } from 'knex';
+import type { XKnex } from '~/db/CustomKnex';
 import type { IBaseModelSqlV2 } from '~/db/IBaseModelSqlV2';
 import type {
   AggregationGeneratorParams,
@@ -23,6 +24,15 @@ export class OracleDBQueryClient
   }
 
   simpleCast(_field: string, _asType: string): string {
+    throw new Error(OracleDBQueryClient.EE_ONLY);
+  }
+
+  batchUpdate(_payload: {
+    knex: XKnex;
+    tnPath: string | Knex.Raw;
+    rows: Record<string, any>[];
+    pkColumnName: string;
+  }): Knex.QueryBuilder | Knex.Raw | null {
     throw new Error(OracleDBQueryClient.EE_ONLY);
   }
 
