@@ -2495,6 +2495,7 @@
     "defaultNumberPercent": "Default Number (%)",
     "durationFormat": "Duration Format",
     "dateFormat": "Date Format",
+    "pickDateFormat": "Pick a format — example uses today",
     "timeFormat": "Time Format",
     "singularLabel": "Singular Label",
     "pluralLabel": "Plural Label",
