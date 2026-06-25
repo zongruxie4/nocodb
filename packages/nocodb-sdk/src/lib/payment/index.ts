@@ -131,6 +131,7 @@ export enum PlanFeatureTypes {
   FEATURE_FIELD_VISIBILITY = 'feature_field_visibility',
   FEATURE_BOOKMARKS = 'feature_bookmarks',
   FEATURE_MSSQL = 'feature_mssql',
+  FEATURE_ORACLE = 'feature_oracle',
   /** On-prem (white-label add-on, Scale+): instance-wide white-labeling (logo, product name, brand color, favicon) */
   FEATURE_WHITE_LABEL = 'feature_white_label',
 }
@@ -140,6 +141,7 @@ export enum PlanAddonTypes {
   ADDON_WHITE_LABEL = 'addon_white_label',
   ADDON_MSSQL = 'addon_mssql',
   ADDON_SANDBOX = 'addon_sandbox',
+  ADDON_ORACLE = 'addon_oracle',
 }
 
 export enum PlanTitles {
@@ -493,6 +495,7 @@ export const PlanFeatureUpgradeMessages: Record<PlanFeatureTypes, string> = {
     'to control field-level visibility.',
   [PlanFeatureTypes.FEATURE_BOOKMARKS]: 'to use bookmarks.',
   [PlanFeatureTypes.FEATURE_MSSQL]: 'to connect Microsoft SQL Server sources.',
+  [PlanFeatureTypes.FEATURE_ORACLE]: 'to connect Oracle Database sources.',
   [PlanFeatureTypes.FEATURE_WHITE_LABEL]:
     'to white-label this instance with your own logo, product name, and brand color.',
 };

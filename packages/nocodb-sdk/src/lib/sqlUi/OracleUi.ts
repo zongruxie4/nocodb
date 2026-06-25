@@ -828,6 +828,7 @@ export class OracleUi implements SqlUi {
       'ARRAYUNIQUE',
       'ARRAYSLICE',
       'ARRAYCOMPACT',
+      'EXP',
     ];
   }
 

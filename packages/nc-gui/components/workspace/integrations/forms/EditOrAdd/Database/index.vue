@@ -92,7 +92,7 @@ const isEnabledSaveChangesBtn = ref(false)
 
 const { isFeatureEnabled } = useBetaFeatureToggle()
 
-const { blockMssql, showUpgradeToUseMssql } = useEeConfig()
+const { blockMssql, showUpgradeToUseMssql, blockOracle, showUpgradeToUseOracle } = useEeConfig()
 
 const easterEgg = ref(false)
 
@@ -198,6 +198,11 @@ const onClientChange = () => {
   // already-connected MSSQL source.
   if (!isEditMode.value && formState.value.dataSource.client === ClientType.MSSQL && blockMssql.value) {
     showUpgradeToUseMssql({ triggerSource: 'integrations-mssql' })
+  }
+  // Oracle is sold as a paid add-on (FEATURE_ORACLE), same as MSSQL — surface the
+  // upgrade prompt on selection so a blocked user isn't left to hit a 402.
+  if (!isEditMode.value && formState.value.dataSource.client === ClientType.ORACLE && blockOracle.value) {
+    showUpgradeToUseOracle({ triggerSource: 'integrations-oracle' })
   }
   formState.value.dataSource = { ..._getDefaultConnectionConfig(formState.value.dataSource.client) }
 }
