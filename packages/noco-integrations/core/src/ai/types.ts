@@ -4,9 +4,32 @@ import {
   wrapLanguageModel,
   defaultSettingsMiddleware,
 } from 'ai';
+import { devToolsMiddleware } from '@ai-sdk/devtools';
 import { IntegrationWrapper } from '../integration';
 import type { ModelMessage, ToolSet } from 'ai';
 import type { LanguageModelV3 as LanguageModel } from '@ai-sdk/provider';
+
+/**
+ * AI SDK DevTools — opt-in via NC_AI_DEVTOOLS=true (set on local dev / playwright
+ * scripts in packages/nocodb; never set in production). Applied centrally in
+ * getModel() so it captures EVERY AI call — chat agents and the schema / docs /
+ * completion / utils / data services all route through getModel(). Runs/steps/
+ * tool-calls are written to `.devtools/generations.json` (under the backend cwd);
+ * inspect with `npx @ai-sdk/devtools` → http://localhost:4983.
+ *
+ * Dormant in production: the middleware is built only when the env flag is set,
+ * and getModel() leaves the model untouched otherwise. @ai-sdk/devtools is a
+ * regular dependency (not dev-only) because this module is loaded at boot with a
+ * static import and prod prunes devDependencies.
+ */
+const devToolsMw =
+  process.env.NC_AI_DEVTOOLS === 'true' ? devToolsMiddleware() : null;
+if (devToolsMw) {
+  // eslint-disable-next-line no-console
+  console.log(
+    '[AI DevTools] enabled — run `npx @ai-sdk/devtools` → http://localhost:4983',
+  );
+}
 
 export type ModelCapability = 'text' | 'vision' | 'tools' | 'image-generation';
 
@@ -152,6 +175,12 @@ export abstract class AiIntegration<
           }),
         });
       }
+    }
+
+    // DevTools capture (no-op unless NC_AI_DEVTOOLS=true) — applied last so it
+    // observes the fully-configured model used by every AI feature.
+    if (devToolsMw) {
+      model = wrapLanguageModel({ model, middleware: devToolsMw });
     }
 
     return model;

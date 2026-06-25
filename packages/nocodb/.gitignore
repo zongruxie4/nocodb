@@ -56,3 +56,6 @@ mssql-data-db.json
 
 # ignore root .env
 /.env
+
+# AI SDK DevTools local capture (NC_AI_DEVTOOLS=true) — never commit
+.devtools/
