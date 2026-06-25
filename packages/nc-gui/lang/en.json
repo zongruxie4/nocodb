@@ -4213,6 +4213,7 @@
       "computedFieldDeleteWarning": "Contents are read-only",
       "computedFieldClearWarning": "Can’t clear read-only field",
       "fieldReadonly": "This field is read-only",
+      "lookupResultTypeNotFormattable": "Your result type is not a number or a date. Formatting options are currently only available if your result type is a number or a date.",
       "noMoreRecords": "No more records",
       "tokenNameNotEmpty": "Token name should not be empty",
       "tokenNameMaxLength": "Token name should not be more than 255 characters",

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   UITypes,
+  getEffectiveDisplayColumn,
   getRenderAsTextFunForUiType,
   getRollupColumnMeta,
   integerPreservingRollupFunctions,
@@ -52,14 +53,12 @@ const childColumn = computed(() => {
   if (col.uidt === UITypes.Formula) {
     const colMeta = parseProp(col.meta)
     if (colMeta?.display_type) {
-      const displayColumnMeta = parseProp(colMeta.display_column_meta)
+      const effectiveCol = getEffectiveDisplayColumn(colMeta, col)
 
       return {
-        ...col,
-        uidt: colMeta.display_type,
-        ...displayColumnMeta,
+        ...effectiveCol,
         meta: {
-          ...parseProp(displayColumnMeta?.meta),
+          ...parseProp(effectiveCol.meta),
           ...getRollupColumnMeta(
             column.value?.meta,
             colMeta.display_type,

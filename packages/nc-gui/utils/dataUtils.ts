@@ -2,6 +2,7 @@ import {
   RelationTypes,
   UITypes,
   dateFormats,
+  getEffectiveDisplayColumn,
   getRenderAsTextFunForUiType,
   getRollupColumnMeta,
   integerPreservingRollupFunctions,
@@ -579,11 +580,15 @@ export const getLookupValue = (modelValue: string | null | number | Array<any>, 
   // the related meta isn't loaded (childColumn would then be undefined anyway).
   const childMeta = relatedTableMeta ?? meta
 
+  // Apply the lookup column's own formatting override (meta.display_type) on top of
+  // the resolved child column so number/date lookups honour the configured format.
+  const effectiveChildColumn = childColumn ? getEffectiveDisplayColumn(col?.meta, childColumn) : childColumn
+
   if (Array.isArray(modelValue)) {
     return modelValue
       .map((v) => {
         // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        return parsePlainCellValue(resolveRecordValue(v), { ...params, col: childColumn!, meta: childMeta })
+        return parsePlainCellValue(resolveRecordValue(v), { ...params, col: effectiveChildColumn!, meta: childMeta })
       })
       .join(', ')
   }
@@ -598,7 +603,7 @@ export const getLookupValue = (modelValue: string | null | number | Array<any>, 
   }
 
   // eslint-disable-next-line @typescript-eslint/no-use-before-define
-  return parsePlainCellValue(resolveRecordValue(modelValue), { ...params, col: childColumn, meta: childMeta })
+  return parsePlainCellValue(resolveRecordValue(modelValue), { ...params, col: effectiveChildColumn, meta: childMeta })
 }
 
 export function getLookupColumnType(
@@ -734,12 +739,7 @@ export const parsePlainCellValue = (
 
   if (isFormula(col)) {
     if (col?.meta?.display_type) {
-      const childColumn = {
-        uidt: col?.meta?.display_type,
-        ...col?.meta?.display_column_meta,
-      }
-
-      return parsePlainCellValue(value, { ...params, col: childColumn })
+      return parsePlainCellValue(value, { ...params, col: getEffectiveDisplayColumn(col?.meta) })
     } else {
       const url = replaceUrlsWithLink(value, true)
 

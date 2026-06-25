@@ -1,5 +1,6 @@
 import {
   convertMS2Duration,
+  getEffectiveDisplayColumn,
   isSupportedDisplayValueColumn,
   LongTextAiMetaProp,
   parseDecimalValue,
@@ -133,12 +134,21 @@ export async function serializeCellValue(
 
         const lookupColumn = await colOptions.getLookupColumn(refContext);
         if (!lookupColumn) return value?.toString?.() ?? '';
+
+        // Apply the lookup column's own formatting override (meta.display_type +
+        // meta.display_column_meta) so export/webhook payloads honour the configured
+        // number/date format; falls back to the child column when no override is set.
+        const effectiveColumn = getEffectiveDisplayColumn(
+          parseProp(column.meta),
+          lookupColumn as unknown as Record<string, any>,
+        ) as unknown as Column;
+
         return (
           await Promise.all(
             [...(Array.isArray(value) ? value : [value])].map(async (v) =>
               serializeCellValue(refContext, {
                 value: v,
-                column: lookupColumn,
+                column: effectiveColumn,
                 siteUrl,
                 locale,
               }),

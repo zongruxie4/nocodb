@@ -13,6 +13,7 @@ import {
 } from '~/lib/helperFunctions';
 import UITypes from '~/lib/UITypes';
 import { isIntegerUiType } from '../utils/cell';
+import { getEffectiveDisplayColumn } from '../utils/get-effective-display-column';
 import { ComputedTypePasteError } from '~/lib/error';
 import { precisionFormats, SeparatorType } from '../utils';
 import { isValidValue } from '~/lib/is';
@@ -74,14 +75,14 @@ export class RollupHelper extends AbstractColumnHelper {
       const colMeta = parseProp(childColumn.meta);
       if (colMeta?.display_type) {
         isFormulaWithDisplayType = true;
-        const displayColumnMeta = parseProp(colMeta.display_column_meta);
 
+        // Resolve the formula's display_type into the effective child column, then
+        // layer the rollup-specific meta on top of the display format meta.
+        childColumn = getEffectiveDisplayColumn(colMeta, childColumn);
         childColumn = {
           ...childColumn,
-          uidt: colMeta.display_type,
-          ...displayColumnMeta,
           meta: {
-            ...parseProp(displayColumnMeta?.meta),
+            ...parseProp(childColumn.meta),
             ...getRollupColumnMeta(
               col?.meta,
               colMeta.display_type,
