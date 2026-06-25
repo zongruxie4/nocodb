@@ -20,20 +20,10 @@ export class FallbackEventEmitter implements IEventEmitter {
     // the whole process down. Attach a catch so one misbehaving listener can
     // never crash the server; listeners that need their own error context still
     // wrap their own bodies.
-    //
-    // Snapshot the emit call site NOW: once a listener rejects asynchronously,
-    // the caller's frames are gone, so the rejection only carries the listener
-    // chain (e.g. handleHooks → checkLimit) — never which code fired the event.
-    // Building the Error is cheap; V8 formats `.stack` lazily, so the hot path
-    // only pays when a listener actually rejects.
-    const emitSite = new Error();
     this.emitter.emit(event, data).catch((e) => {
       this.logger.error(
         `Unhandled error in '${event}' event listener: ${e?.message ?? e}`,
-        // listener stack = the actual failure; emit-site stack = the caller
-        [e?.stack, `Emitted from:${emitSite.stack?.replace(/^Error/, '')}`]
-          .filter(Boolean)
-          .join('\n'),
+        e?.stack,
       );
     });
   }
