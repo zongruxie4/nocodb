@@ -389,7 +389,7 @@ const { message: templatedMessage } = useTemplatedMessage(
           <SmartsheetFormDraftRestoredBanner
             v-if="draftWasRestored"
             :restored-at="draftRestoredAt"
-            class="mx-6 lg:mx-12 mb-4"
+            class="mb-4"
             @discard="discardDraft"
             @close="dismissDraftBanner"
           />
