@@ -229,7 +229,9 @@ const importBtnText = computed(() => {
   return getBtnText(importLoading.value || preImportLoading.value)
 })
 
-const disableImportButton = computed(() => !templateEditorRef.value?.isValid || isError.value)
+const disableImportButton = computed(
+  () => !templateEditorRef.value?.isValid || templateEditorRef.value?.canImport === false || isError.value,
+)
 
 function buildPreviewParserConfig(encoding = 'utf-8') {
   return {
@@ -414,7 +416,7 @@ function populateUniqueTableName(tn: string, draftTn: string[] = []) {
       const s = t.table_name.split('___')
       let target = t.table_name
       if (s.length > 1) target = s[1]
-      return target === `${tn}` || t.table_name === `${tn}`
+      return target === `${tn}` || t.table_name === `${tn}` || t.title === `${tn}`
     })
   ) {
     tn = `${tn}_${c++}`

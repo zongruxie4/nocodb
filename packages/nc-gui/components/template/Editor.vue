@@ -166,7 +166,18 @@ const srcDestMapping = ref<Record<string, Record<string, any>[]>>({})
 const data = reactive<{
   title: string | null
   name: string
-  tables: (TableType & { ref_table_name: string; columns: (ColumnType & { key: number; _disableSelect?: boolean })[] })[]
+  tables: (TableType & {
+    ref_table_name: string
+    // Per-sheet "include in import" flag (multi-sheet Excel). Defaults to true;
+    // unchecking the sheet checkbox sets it false to exclude the sheet.
+    selected?: boolean
+    // Transient client-only metadata carried from the preview step (see
+    // QuickImport.vue) — used to group sheets by file and drive progress counts.
+    _serverAttachment?: Record<string, any>
+    _sheetName?: string
+    _totalRows?: number
+    columns: (ColumnType & { key: number; _disableSelect?: boolean })[]
+  })[]
 }>({
   title: null,
   name: 'Base Name',
@@ -221,7 +232,11 @@ const validators = computed(() =>
       {
         validator: (_rule: any, value: any) => {
           return new Promise<void>((resolve, reject) => {
-            if (!importDataOnly && ncIsArray(value) && !value.some((item) => item.selected)) {
+            // An included sheet must keep at least one field selected. An excluded
+            // sheet (checkbox off) is exempt — it isn't imported, so it neither
+            // errors nor blocks the import. The validator reads the live
+            // `table.selected`, so toggling the sheet re-evaluates it in place.
+            if (!importDataOnly && ncIsArray(value) && !value.some((item) => item.selected) && table.selected !== false) {
               return reject(new Error(t('msg.error.selectAtleastOneColumn')))
             }
 
@@ -307,6 +322,20 @@ const isValid = ref(!importDataOnly)
 
 const importError = ref('')
 
+// The per-sheet "include in import" checkbox only applies when creating new
+// tables from a multi-sheet file (Excel). It's irrelevant for "import into an
+// existing table" and for single-sheet sources (CSV / JSON / one-sheet Excel).
+const showSheetSelection = computed(() => !importDataOnly && data.tables.length > 1)
+
+// Import is allowed only when at least one sheet is included AND every included
+// sheet keeps a selected field. Drives the Import button so excluding every
+// sheet (or leaving an included sheet empty) can't queue an invalid import.
+const canImport = computed(() => {
+  if (importDataOnly) return true
+  const includedTables = data.tables.filter((t) => t.selected !== false)
+  return includedTables.length > 0 && includedTables.every((t) => (t.columns as any[])?.some((c) => c.selected) ?? false)
+})
+
 const formRef = ref()
 
 watch(
@@ -375,6 +404,9 @@ function parseTemplate({ tables = [], ...rest }: Props['baseTemplate']) {
     ...rest,
     tables: tables.map(({ v = [], columns = [], ...rest }) => ({
       ...rest,
+      // Default every sheet to "included". The per-sheet checkbox (shown only
+      // for multi-sheet imports) flips this to false to exclude a sheet.
+      selected: true,
       columns: [
         ...columns.map((c: any, idx: number) => {
           if (!importDataOnly && c.column_name?.toLowerCase() === 'id') {
@@ -643,6 +675,11 @@ async function importViaJob() {
     // Group editor tables by the file they came from.
     const groups = new Map<any, typeof data.tables>()
     for (const table of data.tables) {
+      // Skip sheets the user excluded via the per-sheet checkbox — they never
+      // enter the job payload, which is why no backend change is needed.
+      // Included sheets are guaranteed to have a selected field by validation.
+      if (!importDataOnly && table.selected === false) continue
+
       const key = table._serverAttachment
       if (!groups.has(key)) groups.set(key, [] as any)
       groups.get(key)!.push(table)
@@ -810,6 +847,7 @@ function mapDefaultColumns() {
 defineExpose({
   importTemplate,
   isValid,
+  canImport,
   importError,
   updateImportError: (err: string) => {
     importError.value = err
@@ -906,7 +944,18 @@ const currentColumnToEdit = ref('')
 const currentTableToEdit = ref<number | undefined>()
 
 const getErrorForTable = (tableIdx: number) => {
-  return (formError.value?.[`tables.${tableIdx}.table_name`] || []).concat(formError.value?.[`tables.${tableIdx}.columns`] || [])
+  const errors = [...(formError.value?.[`tables.${tableIdx}.table_name`] || [])]
+
+  // "At least one field" is derived reactively from the live selection instead of
+  // ant's validate() — validate() skips a field whose value hasn't changed, so it
+  // wouldn't refresh when a sheet is re-included without touching its fields. An
+  // excluded sheet (checkbox off) is exempt.
+  const table = data.tables[tableIdx]
+  if (table && table.selected !== false && !(table.columns as any[])?.some((c) => c.selected)) {
+    errors.push(t('msg.error.selectAtleastOneColumn'))
+  }
+
+  return errors
 }
 
 function getErrorByTableName(tableName: string) {
@@ -1181,6 +1230,13 @@ function getErrorByTableName(tableName: string) {
                   'w-full': isImporting,
                 }"
               >
+                <span v-if="!isImporting && showSheetSelection" class="flex flex-none" @click.stop>
+                  <NcCheckbox
+                    v-model:checked="table.selected"
+                    v-e="['c:quick-import:sheet:toggle']"
+                    :data-testid="`nc-import-sheet-select-${table.table_name}`"
+                  />
+                </span>
                 <GeneralIcon icon="table" class="w-4 h-4 text-nc-content-gray-subtle" />
                 <a-form-item
                   v-if="!isImporting && currentTableToEdit === tableIdx"
@@ -1219,6 +1275,13 @@ function getErrorByTableName(tableName: string) {
                   </NcButton>
                 </template>
 
+                <span
+                  v-if="showSheetSelection && table.selected === false"
+                  class="flex-none text-bodySm text-nc-content-gray-subtle2 whitespace-nowrap"
+                >
+                  {{ $t('activity.sheetExcludedFromImport') }}
+                </span>
+
                 <NcTooltip v-if="!isImporting && getErrorForTable(tableIdx).length" class="ml-2">
                   <template #title>
                     <div v-for="(err, idx) of getErrorForTable(tableIdx)" :key="idx" class="mb-1 last-of-type:mb-0">
@@ -1230,7 +1293,7 @@ function getErrorByTableName(tableName: string) {
                   </NcBadge>
                 </NcTooltip>
 
-                <div v-if="isImporting" class="w-[150px]">
+                <div v-if="isImporting && table.selected !== false" class="w-[150px]">
                   <a-progress
                     :percent="importingTableTips[table.table_name] ?? 0"
                     size="small"
@@ -1242,7 +1305,11 @@ function getErrorByTableName(tableName: string) {
               </div>
             </template>
 
-            <div v-if="table.columns && table.columns.length" class="bg-nc-bg-gray-extralight pl-3 flex-1 flex max-h-[310px]">
+            <div
+              v-if="table.columns && table.columns.length"
+              class="bg-nc-bg-gray-extralight pl-3 flex-1 flex max-h-[310px]"
+              :class="{ 'opacity-50': table.selected === false }"
+            >
               <NcTable
                 class="template-form flex-1"
                 body-row-class-name="template-form-row"
@@ -1262,6 +1329,7 @@ function getErrorByTableName(tableName: string) {
                         !table.columns.every((it) => it.selected)
                       "
                       :checked="table.columns.every((it) => it.selected)"
+                      :disabled="table.selected === false"
                       @click="toggleTableSelecteds(table)"
                     />
                   </template>
@@ -1278,7 +1346,7 @@ function getErrorByTableName(tableName: string) {
                 </template>
                 <template #bodyCell="{ column, record, recordIndex }">
                   <template v-if="column.key === 'enabled'">
-                    <NcCheckbox v-model:checked="record.selected" />
+                    <NcCheckbox v-model:checked="record.selected" :disabled="table.selected === false" />
                   </template>
                   <template v-if="column.key === 'column_name'">
                     <template v-if="`${tableIdx}-${record.column_name}` === currentColumnToEdit">
