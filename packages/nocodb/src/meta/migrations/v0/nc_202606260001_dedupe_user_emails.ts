@@ -26,6 +26,12 @@ const BATCH_SIZE = 2000;
  *     one survivor, re-point its memberships onto the survivor, then tombstone +
  *     soft-delete the losers so lookups become deterministic again.
  *
+ *  3. **Legacy tombstones** — account-delete only started nulling
+ *     `canonical_email` later, so older soft-deleted rows still carry a
+ *     live-looking canonical. A soft-deleted row with a matchable canonical can
+ *     shadow active accounts in lookups (the root cause), so we clear
+ *     `canonical_email` on every already soft-deleted row.
+ *
  * The merge is intentionally conservative: losers are **soft-deleted**
  * (`is_deleted = true`), never dropped, and only membership / role-assignment
  * rows are re-pointed. Historical attribution columns (created_by, audit author,
@@ -222,8 +228,19 @@ const up = async (knex: Knex) => {
     }
   }
 
+  // ---- Pass 3: neutralize legacy soft-deleted rows ------------------------
+  // Account-delete (User.softDelete) only started nulling canonical_email later,
+  // so older tombstones still carry a real canonical_email. A soft-deleted row
+  // with a live-looking canonical can shadow active accounts in lookups (the
+  // original bug). Match the current delete contract retroactively: clear
+  // canonical_email on every already soft-deleted row that still has one.
+  const neutralizedCount = await knex(MetaTable.USERS)
+    .where('is_deleted', true)
+    .whereNotNull('canonical_email')
+    .update({ canonical_email: null });
+
   logger.log(
-    `User email dedup complete: ${dupGroups.length} duplicate group(s), ${mergedCount} row(s) merged & soft-deleted.`,
+    `User email dedup complete: ${dupGroups.length} duplicate group(s), ${mergedCount} row(s) merged & soft-deleted, ${neutralizedCount} legacy soft-deleted row(s) cleared.`,
   );
 };
 
