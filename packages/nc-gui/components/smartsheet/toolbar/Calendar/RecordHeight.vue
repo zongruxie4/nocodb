@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ViewTypes } from 'nocodb-sdk'
+import { UITypes, ViewTypes } from 'nocodb-sdk'
 
-const { activeCalendarView, recordHeightMode, viewMetaProperties } = useCalendarViewStoreOrThrow()
+const { activeCalendarView, calDataType, recordHeightMode, viewMetaProperties } = useCalendarViewStoreOrThrow()
 
 const { updateViewMeta } = useViewsStore()
 
@@ -23,11 +23,22 @@ const open = ref(false)
 
 type RecordHeightMode = 'compact' | 'expanded'
 
-// Height options apply to the week/multi-week and month grids only (day is a single
-// time-grid column, year is a mini-month grid).
-const heightSupportedModes = ['week', '3day', '2week', 'month', '6week']
+// Month / multi-week grids (month, 2week, 6week) always render record cards
+// (MonthView) regardless of the start field type, so height always applies there.
+const monthGridModes = ['2week', 'month', '6week']
 
-const supportsHeightOptions = computed(() => heightSupportedModes.includes(activeCalendarView.value))
+// week / 3day render record cards (DateField) only for a Date start field. With a
+// DateTime field they render the hour time-grid (DateTimeField), which sizes events
+// by duration and ignores the height option — so hide the control there.
+const supportsHeightOptions = computed(() => {
+  if (monthGridModes.includes(activeCalendarView.value)) return true
+
+  if (activeCalendarView.value === 'week' || activeCalendarView.value === '3day') {
+    return calDataType.value === UITypes.Date
+  }
+
+  return false
+})
 
 const heightOptions = computed<{ value: RecordHeightMode; icon: keyof typeof iconMap; label: string; subtext: string }[]>(() => [
   { value: 'compact', icon: 'heightShort', label: t('activity.compactView'), subtext: t('activity.compactViewSubtext') },
