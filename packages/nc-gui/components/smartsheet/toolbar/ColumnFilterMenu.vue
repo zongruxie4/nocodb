@@ -43,10 +43,13 @@ const { nonDeletedFilters, loadFilters, canSyncFilter } = useViewFilters(
   true,
 )
 
+const { isSharedBase } = storeToRefs(useBase())
+
 const filtersLength = ref(0)
 // If view is locked OR user lacks permission to sync filters (Editor), show restricted UI.
-// Public/shared views always get the interactive UI — their changes are local-only.
-const isRestrictedEditor = computed(() => !isPublic.value && (isLocked.value || !canSyncFilter.value))
+// Public/shared views AND shared bases always get the interactive UI — their
+// changes are local-only. A shared base sets isSharedBase (isPublic stays false).
+const isRestrictedEditor = computed(() => !isPublic.value && !isSharedBase.value && (isLocked.value || !canSyncFilter.value))
 
 // True when user is viewing a personal view they don't own
 const isPersonalViewNonOwner = computed(

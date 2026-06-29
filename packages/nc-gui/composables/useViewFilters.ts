@@ -63,11 +63,13 @@ export function useViewFilters(
         }
       : useSmartsheetStoreOrThrow()
 
-  const { baseMeta } = storeToRefs(useBase())
+  const { baseMeta, isSharedBase } = storeToRefs(useBase())
 
   const isPublic = inject(IsPublicInj, ref(false))
 
-  const isTemp = computed(() => isPublic.value || isTempFilters)
+  // Shared bases never set IsPublicInj (isPublic stays false) but their filter
+  // edits are local-only just like shared views — treat them as temp too.
+  const isTemp = computed(() => isPublic.value || isSharedBase.value || isTempFilters)
 
   const { $api, $e, $eventBus } = useNuxtApp()
 
