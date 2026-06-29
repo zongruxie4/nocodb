@@ -146,6 +146,9 @@ const getIntegrationsByCategory = (category: IntegrationCategoryType, query: str
 
     if (i.hidden) return false
 
+    // EE-only data sources (e.g. MSSQL, Oracle) are hidden in CE; in EE they're gated by their paid add-on.
+    if (!isEeUI && i.isEeOnly) return false
+
     return (
       isOssOnlyAllowed &&
       filterIntegration(i) &&

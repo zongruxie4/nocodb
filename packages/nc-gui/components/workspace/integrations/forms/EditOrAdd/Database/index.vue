@@ -124,6 +124,9 @@ const onEasterEgg = () => {
 
 const clientTypes = computed(() => {
   return _clientTypes.filter((type) => {
+    // MSSQL/Oracle are EE-only — hidden in CE; in EE they're gated by their paid add-on.
+    if (!isEeUI && [ClientType.MSSQL, ClientType.ORACLE].includes(type.value)) return false
+
     return (
       ([ClientType.SNOWFLAKE, ClientType.DATABRICKS].includes(type.value) && easterEgg.value) ||
       ![ClientType.SNOWFLAKE, ClientType.DATABRICKS].includes(type.value)
