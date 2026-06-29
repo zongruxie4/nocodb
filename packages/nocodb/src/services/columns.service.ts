@@ -127,6 +127,7 @@ import { DuplicateDetectionService } from '~/services/duplicate-detection.servic
 import { LinkPlaceholderService } from '~/services/link-placeholder.service';
 import NcConnectionMgrv2 from '~/utils/common/NcConnectionMgrv2';
 import { ltarColumnConversion } from '~/helpers/ltarColumnConversion';
+import { pickPairedLtarColumn } from '~/helpers/ltarPairing';
 import { validateUniqueConstraint } from '~/helpers/uniqueConstraintHelpers';
 import {
   convertAIRecordTypeToValue,
@@ -7793,6 +7794,10 @@ export class ColumnsService implements IColumnsService {
           ? RelationTypes.ONE_TO_ONE
           : RelationTypes.HAS_MANY;
 
+      const candidates: {
+        column: Column;
+        colOptions: LinkToAnotherRecordColumn;
+      }[] = [];
       for (const c of relatedColumns) {
         if (!isLinksOrLTAR(c.uidt)) continue;
         // Skip self (self-referencing OO: both sides have same type & FK columns)
@@ -7800,15 +7805,16 @@ export class ColumnsService implements IColumnsService {
         const opts = await c.getColOptions<LinkToAnotherRecordColumn>(
           refContext,
         );
-        if (
-          opts.fk_parent_column_id === colOptions.fk_parent_column_id &&
-          opts.fk_child_column_id === colOptions.fk_child_column_id &&
-          opts.type === pairedRelType
-        ) {
-          hmColumn = c;
-          hmColOptions = opts;
-          break;
-        }
+        candidates.push({ column: c, colOptions: opts });
+      }
+
+      // Disambiguate by fk_index_name when an external source has multiple FK
+      // constraints over the same column pair, otherwise the wrong counterpart
+      // is picked (#13781).
+      const paired = pickPairedLtarColumn(candidates, colOptions, pairedRelType);
+      if (paired) {
+        hmColumn = paired.column;
+        hmColOptions = paired.colOptions;
       }
 
       if (!hmColumn) {
@@ -7828,6 +7834,10 @@ export class ColumnsService implements IColumnsService {
           ? RelationTypes.ONE_TO_ONE
           : RelationTypes.BELONGS_TO;
 
+      const candidates: {
+        column: Column;
+        colOptions: LinkToAnotherRecordColumn;
+      }[] = [];
       for (const c of relatedColumns) {
         if (!isLinksOrLTAR(c.uidt)) continue;
         // Skip self (self-referencing OO: both sides have same type & FK columns)
@@ -7835,15 +7845,16 @@ export class ColumnsService implements IColumnsService {
         const opts = await c.getColOptions<LinkToAnotherRecordColumn>(
           refContext,
         );
-        if (
-          opts.fk_parent_column_id === colOptions.fk_parent_column_id &&
-          opts.fk_child_column_id === colOptions.fk_child_column_id &&
-          opts.type === pairedRelType
-        ) {
-          btColumn = c;
-          btColOptions = opts;
-          break;
-        }
+        candidates.push({ column: c, colOptions: opts });
+      }
+
+      // Disambiguate by fk_index_name when an external source has multiple FK
+      // constraints over the same column pair, otherwise the wrong counterpart
+      // is picked (#13781).
+      const paired = pickPairedLtarColumn(candidates, colOptions, pairedRelType);
+      if (paired) {
+        btColumn = paired.column;
+        btColOptions = paired.colOptions;
       }
 
       if (!btColumn) {
