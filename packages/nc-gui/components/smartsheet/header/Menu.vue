@@ -65,12 +65,11 @@ const emitEdit = (...args: any[]) => {
   >
     <div class="flex gap-1 items-center" @dblclick.stop>
       <div v-if="isExpandedForm" class="h-[1px]">&nbsp;</div>
-      <NcTooltip v-if="column?.description?.length && !isExpandedForm" overlay-class-name="nc-tooltip-scrollable" class="flex">
-        <template #title>
-          <div class="whitespace-pre-wrap break-words">{{ column?.description }}</div>
-        </template>
-        <GeneralIcon icon="info" class="group-hover:opacity-100 !w-3.5 !h-3.5 !text-nc-content-gray-muted flex-none" />
-      </NcTooltip>
+      <SmartsheetHeaderDescriptionTooltip
+        v-if="column?.description?.length && !isExpandedForm"
+        :description="column?.description"
+        variant="grid"
+      />
 
       <NcTooltip class="flex items-center">
         <GeneralIcon

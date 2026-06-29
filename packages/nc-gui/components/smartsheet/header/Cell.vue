@@ -283,22 +283,10 @@ const onClick = (e: Event) => {
           invisible: !(editColumnDropdown || isDropDownOpen),
         }"
       />
-      <NcTooltip
-        v-if="column.description?.length && isExpandedForm"
-        class="flex items-center ml-1"
-        placement="bottom"
-        overlay-class-name="nc-tooltip-scrollable"
-      >
-        <template #title>
-          <div class="whitespace-pre-wrap break-words">{{ column.description }}</div>
-        </template>
-        <GeneralIcon
-          icon="info"
-          class="nc-column-description-icon flex-none !w-3.5 !h-3.5 !text-nc-content-gray-muted"
-          data-testid="nc-expanded-field-description"
-          @click.stop
-        />
-      </NcTooltip>
+      <SmartsheetHeaderDescriptionTooltip
+        v-if="column.description?.length && isExpandedForm && !hideMenu"
+        :description="column.description"
+      />
       <div class="flex-1" />
       <NcTooltip v-if="isDateDependencyField && isExpandedForm && !isPublic" class="flex items-center" placement="bottom">
         <template #title> {{ $t('labels.dateDependency.enabled') }} </template>
@@ -313,17 +301,11 @@ const onClick = (e: Event) => {
         <GeneralIcon icon="ncZap" class="flex-none !w-3.5 !h-3.5 !text-nc-content-gray-disabled" />
       </NcTooltip>
     </div>
-    <NcTooltip
+    <SmartsheetHeaderDescriptionTooltip
       v-if="column.description?.length && isPublic && isGrid && !isExpandedForm && !hideMenu"
-      overlay-class-name="nc-tooltip-scrollable"
-    >
-      <template #title>
-        <div class="whitespace-pre-wrap break-words">{{ column.description }}</div>
-      </template>
-      <div>
-        <GeneralIcon icon="info" class="group-hover:opacity-100 !w-3.5 !h-3.5 !text-nc-content-gray-muted flex-none" />
-      </div>
-    </NcTooltip>
+      :description="column.description"
+      variant="grid"
+    />
 
     <template v-if="!hideMenu || meta?.synced">
       <div v-if="!isExpandedForm" class="flex-1" />
