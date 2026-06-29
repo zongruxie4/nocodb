@@ -42,6 +42,13 @@ const buildUuidGroupBySelector = ({
   return baseModel.dbDriver.raw('?? as ??', [columnName, alias]);
 };
 
+// Oracle TIMESTAMP WITH [LOCAL] TIME ZONE columns must be normalized to UTC
+// (SYS_EXTRACT_UTC) before bucketing so group keys match the read path (which
+// renders them AT TIME ZONE '+00:00'); plain TIMESTAMP columns already store
+// UTC wall time, and SYS_EXTRACT_UTC would raise ORA-30175 on them.
+const isWithTimeZone = (column: Column): boolean =>
+  (column.dt ?? '').toLowerCase().includes('time zone');
+
 // Returns a SQL expression that converts blank (null or '') values to NULL
 const sqlNullIfBlank = ({
   baseModel,
@@ -86,6 +93,21 @@ const sqlNullIfBlank = ({
 };
 
 export const groupBy = (baseModel: IBaseModelSqlV2, logger: Logger) => {
+  // Wrap a subquery as a derived table with an alias, deferring the dialect's
+  // table-alias syntax to the query client (Oracle forbids `AS` on a table
+  // alias; the rest use `(..) as ..`).
+  const aliasDerivedTable = (
+    sub: Knex.QueryBuilder | Knex.Raw,
+    alias: string,
+  ): Knex.Raw =>
+    DBQueryClient.get(
+      baseModel.dbDriver.clientType() as ClientType,
+    ).tableAlias(
+      baseModel.dbDriver,
+      baseModel.dbDriver.raw('(??)', [sub]),
+      alias,
+    );
+
   const list = async (args: {
     where?: string;
     column_name: string;
@@ -100,6 +122,14 @@ export const groupBy = (baseModel: IBaseModelSqlV2, logger: Logger) => {
     const { where, ...rest } = baseModel._getListArgs(args as any);
 
     args.column_name = args.column_name || '';
+
+    // minCount comes from the query string as text; coerce to a number so the
+    // HAVING `COUNT(..) >= ?` bind isn't bound as text. SQLite compares
+    // INTEGER < TEXT by storage class, so `COUNT(..) >= '2'` is always false
+    // (0 groups); pg/mysql/oracle coerce the param, sqlite does not.
+    if (args.minCount !== undefined) {
+      args.minCount = Number(args.minCount);
+    }
     const subGroupColumnName = args.subGroupColumnName;
 
     const columns = await baseModel.model.getColumns(baseModel.context);
@@ -188,6 +218,18 @@ export const groupBy = (baseModel: IBaseModelSqlV2, logger: Logger) => {
                 baseModel,
                 isStringType: true,
               });
+            } else if (
+              baseModel.isOracle &&
+              (column.colOptions as FormulaColumn).getParsedTree().dataType ===
+                FormulaDataTypes.STRING
+            ) {
+              // Oracle string formulas compile to CLOB, which can't be a
+              // GROUP BY / ORDER BY key (ORA-22848). Shorten to VARCHAR2
+              // (4000 = max comparison-key length) for use as a group key.
+              columnQuery = baseModel.dbDriver.raw(
+                'DBMS_LOB.SUBSTR(TO_CLOB(??), 4000, 1)',
+                [columnQuery],
+              );
             }
           } catch (e) {
             logger.log(e);
@@ -253,6 +295,21 @@ export const groupBy = (baseModel: IBaseModelSqlV2, logger: Logger) => {
                 ? `DATETRUNC(MINUTE, ??)`
                 : `CONVERT(DATETIME, CONVERT(VARCHAR(16), ??, 120))`;
             columnQuery = baseModel.dbDriver.raw(truncSql, [columnName]);
+          } else if (baseModel.isOracle) {
+            // Oracle has no DATE() function; truncate the timestamp to the
+            // minute (matching pg/mysql/sqlite/mssql above) via TRUNC on a DATE
+            // cast. DATE(??) below would raise ORA-00904. Keep this in lockstep
+            // with the count() datetime branch so list/count group identically.
+            // TIMESTAMP WITH [LOCAL] TIME ZONE columns are normalized to UTC
+            // first (SYS_EXTRACT_UTC) so buckets match the read path, which
+            // renders these AT TIME ZONE '+00:00'; a raw CAST buckets by the
+            // value's own offset / session TZ. Mirrors the date-formula fix.
+            columnQuery = baseModel.dbDriver.raw(
+              isWithTimeZone(column)
+                ? "TRUNC(CAST(SYS_EXTRACT_UTC(??) AS DATE), 'MI')"
+                : "TRUNC(CAST(?? AS DATE), 'MI')",
+              [columnName],
+            );
           } else {
             columnQuery = baseModel.dbDriver.raw('DATE(??)', [columnName]);
           }
@@ -331,10 +388,11 @@ export const groupBy = (baseModel: IBaseModelSqlV2, logger: Logger) => {
     const qb = baseModel.dbDriver(baseModel.tnPath);
 
     // get aggregated count of each group
-    // mssql skips the inner COUNT — it can't push COUNT(*) into a projection
-    // that the outer derived table then groups against. Counting is done on
-    // the outer derived table for mssql.
-    if (!baseModel.isMssql) {
+    // mssql and oracle skip the inner COUNT — they can't push COUNT(*) into a
+    // projection that the outer derived table then groups against (it would be
+    // an aggregate with no GROUP BY → ORA-00937). Counting is done on the outer
+    // derived table for both.
+    if (!baseModel.isMssql && !baseModel.isOracle) {
       qb.count(`${baseModel.model.primaryKey?.column_name || '*'} as count`);
     }
 
@@ -443,10 +501,12 @@ export const groupBy = (baseModel: IBaseModelSqlV2, logger: Logger) => {
     }
 
     // group by using the column aliases. mssql cannot GROUP BY a select
-    // alias or a correlated subquery (rollup / lookup keys), so the group
+    // alias or a correlated subquery (rollup / lookup keys); oracle < 23c
+    // can't GROUP BY a select alias either (ORA-00904) and no oracle version
+    // can GROUP BY a subquery-valued alias (ORA-22818). For both, the group
     // keys are projected into a derived table and aggregated / grouped by
     // those real columns below.
-    if (!baseModel.isMssql) {
+    if (!baseModel.isMssql && !baseModel.isOracle) {
       qb.groupBy(...groupBySelectors);
 
       // Add HAVING clause to filter groups by minimum count (e.g., count > 1 for duplicates only)
@@ -459,7 +519,7 @@ export const groupBy = (baseModel: IBaseModelSqlV2, logger: Logger) => {
     }
 
     let outerQb: Knex.QueryBuilder;
-    if (baseModel.isMssql) {
+    if (baseModel.isMssql || baseModel.isOracle) {
       // mssql aggregation: SELECT count(*) [, sub-group COUNT(DISTINCT...)],
       // <aliases> FROM (<qb>) __nc_grp_src__ GROUP BY <aliases>
       // [HAVING COUNT(*) >= minCount]
@@ -482,7 +542,7 @@ export const groupBy = (baseModel: IBaseModelSqlV2, logger: Logger) => {
             ['count', ...subGroupCountBindings, ...aliasBindings],
           ),
         )
-        .from(baseModel.dbDriver.raw('(??) as ??', [qb, '__nc_grp_src__']));
+        .from(aliasDerivedTable(qb, '__nc_grp_src__'));
 
       if (groupBySelectors.length) {
         grouped.groupByRaw(aliasRefs.join(', '), aliasBindings);
@@ -637,8 +697,9 @@ export const groupBy = (baseModel: IBaseModelSqlV2, logger: Logger) => {
       // Oracle rejects the `) __nc_group_alias` derived-table wrap below — an
       // unquoted identifier can't start with `_` (ORA-00911). knex's oracledb
       // dialect already wraps the paginated query in its own ROWNUM subquery,
-      // and Oracle 23c accepts GROUP BY on a select alias inside the CTE, so
-      // execute outerQb directly like the mssql path.
+      // and the group keys are materialised in the `__nc_grp_src__` derived
+      // table above (so no GROUP BY on a select alias), so execute outerQb
+      // directly like the mssql path.
       return await baseModel.execAndParse(outerQb);
     }
 
@@ -660,6 +721,14 @@ export const groupBy = (baseModel: IBaseModelSqlV2, logger: Logger) => {
     const { where } = baseModel._getListArgs(args as any);
 
     args.column_name = args.column_name || '';
+
+    // minCount comes from the query string as text; coerce to a number so the
+    // HAVING `COUNT(..) >= ?` bind isn't bound as text. SQLite compares
+    // INTEGER < TEXT by storage class, so `COUNT(..) >= '2'` is always false
+    // (0 groups); pg/mysql/oracle coerce the param, sqlite does not.
+    if (args.minCount !== undefined) {
+      args.minCount = Number(args.minCount);
+    }
 
     const selectors = [];
     const groupBySelectors = [];
@@ -728,9 +797,24 @@ export const groupBy = (baseModel: IBaseModelSqlV2, logger: Logger) => {
                 column,
               );
 
+              let formulaBuilder: any = _selectQb.builder;
+              if (
+                baseModel.isOracle &&
+                (column.colOptions as FormulaColumn).getParsedTree()
+                  .dataType === FormulaDataTypes.STRING
+              ) {
+                // Oracle string formulas are CLOB; CLOB can't be a GROUP BY
+                // key (ORA-22848). Shorten to VARCHAR2 — mirrors the list()
+                // formula branch so list/count group identically.
+                formulaBuilder = baseModel.dbDriver.raw(
+                  'DBMS_LOB.SUBSTR(TO_CLOB(??), 4000, 1)',
+                  [formulaBuilder],
+                );
+              }
+
               selectQb = baseModel.dbDriver.raw(`?? as ??`, [
                 sqlNullIfBlank({
-                  columnName: _selectQb.builder,
+                  columnName: formulaBuilder,
                   baseModel,
                 }),
                 getAs(column),
@@ -828,6 +912,21 @@ export const groupBy = (baseModel: IBaseModelSqlV2, logger: Logger) => {
                 selectors.push(
                   baseModel.dbDriver.raw(truncSql, [columnName, getAs(column)]),
                 );
+              } else if (baseModel.isOracle) {
+                // Oracle has no DATE() function; truncate the timestamp to the
+                // minute (matching pg/mysql/sqlite/mssql above) via TRUNC on a
+                // DATE cast. DATE(??) below would raise ORA-00904. TIMESTAMP
+                // WITH [LOCAL] TIME ZONE columns are normalized to UTC first
+                // (SYS_EXTRACT_UTC) so buckets match the read path — see the
+                // list() datetime branch.
+                selectors.push(
+                  baseModel.dbDriver.raw(
+                    isWithTimeZone(column)
+                      ? "TRUNC(CAST(SYS_EXTRACT_UTC(??) AS DATE), 'MI') as ??"
+                      : "TRUNC(CAST(?? AS DATE), 'MI') as ??",
+                    [columnName, getAs(column)],
+                  ),
+                );
               } else {
                 selectors.push(
                   baseModel.dbDriver.raw('DATE(??) as ??', [
@@ -895,9 +994,10 @@ export const groupBy = (baseModel: IBaseModelSqlV2, logger: Logger) => {
 
     // Build the group-by query
     const qb = baseModel.dbDriver(baseModel.tnPath);
-    // mssql counts via nested derived tables — the inner projection here
-    // does NOT add a COUNT aggregate (would conflict with the outer grouping).
-    if (!baseModel.isMssql) {
+    // mssql and oracle count via nested derived tables — the inner projection
+    // here does NOT add a COUNT aggregate (would conflict with the outer
+    // grouping that happens in the derived table).
+    if (!baseModel.isMssql && !baseModel.isOracle) {
       qb.count(`${baseModel.model.primaryKey?.column_name || '*'} as count`);
     }
     qb.select(...selectors);
@@ -946,9 +1046,11 @@ export const groupBy = (baseModel: IBaseModelSqlV2, logger: Logger) => {
       qb.where(softDeleteFilterCount);
     }
 
-    // mssql can't GROUP BY select aliases — push grouping to the outer
-    // derived table below. For other engines, GROUP BY + HAVING on `qb`.
-    if (!baseModel.isMssql) {
+    // mssql can't GROUP BY select aliases; oracle < 23c can't either (ORA-00904)
+    // and no oracle version can GROUP BY a subquery-valued alias (ORA-22818).
+    // For both, grouping is pushed to the outer derived table below. For other
+    // engines, GROUP BY + HAVING on `qb`.
+    if (!baseModel.isMssql && !baseModel.isOracle) {
       qb.groupBy(...groupBySelectors);
 
       // Add HAVING clause to filter groups by minimum count (e.g., count > 1 for duplicates only)
@@ -961,29 +1063,37 @@ export const groupBy = (baseModel: IBaseModelSqlV2, logger: Logger) => {
     }
 
     let qbP: Knex.QueryBuilder;
-    if (baseModel.isMssql) {
-      // mssql: nested derived tables —
+    if (baseModel.isMssql || baseModel.isOracle) {
+      // mssql/oracle: project the group keys into a derived table and GROUP BY
+      // those real columns —
       //   SELECT count(*) FROM (
-      //     SELECT <aliases> FROM (qb) sub GROUP BY <aliases>
+      //     SELECT <aliases> FROM (qb) sub GROUP BY <aliases> [HAVING ...]
       //   ) grouped
-      const aliasRefs = groupBySelectors.map(() => '??');
-      const aliasBindings = groupBySelectors;
-
+      // mssql can't GROUP BY a select alias; oracle < 23c can't either
+      // (ORA-00904) and no oracle version can GROUP BY a subquery-valued alias
+      // (ORA-22818, lookup/rollup keys). The optimizer merges the inline
+      // projection, so the plan matches a direct GROUP BY.
+      const aliasRefs = groupBySelectors.map(() => '??').join(', ');
       const inner = baseModel.dbDriver
         .select(
           groupBySelectors.length
-            ? baseModel.dbDriver.raw(aliasRefs.join(', '), aliasBindings)
+            ? baseModel.dbDriver.raw(aliasRefs, groupBySelectors)
             : baseModel.dbDriver.raw('1'),
         )
-        .from(baseModel.dbDriver.raw('(??) as ??', [qb, 'sub']));
+        .from(aliasDerivedTable(qb, 'sub'));
 
       if (groupBySelectors.length) {
-        inner.groupByRaw(aliasRefs.join(', '), aliasBindings);
+        inner.groupByRaw(aliasRefs, groupBySelectors);
+
+        // Filter to groups with at least minCount rows (duplicates-only).
+        if (args.minCount !== undefined && args.minCount > 0) {
+          inner.havingRaw('COUNT(*) >= ?', [args.minCount]);
+        }
       }
 
       qbP = baseModel.dbDriver
         .count('*', { as: 'count' })
-        .from(baseModel.dbDriver.raw('(??) as ??', [inner, 'grouped']));
+        .from(aliasDerivedTable(inner, 'grouped'));
     } else {
       // Wrap in a CTE so that we can reference grouped columns safely in all engines
       // SELECT COUNT(*) FROM (WITH grouped AS (<qb>) SELECT * FROM grouped g) sub
