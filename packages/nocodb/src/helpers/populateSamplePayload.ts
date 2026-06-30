@@ -447,7 +447,7 @@ async function getSampleColumnValue(
 export async function populateSampleCommentPayload(
   context: NcContext,
   model: Model,
-  operation = 'added',
+  operation = 'insert',
   version = 'v3',
   includeUser = false,
   user?: SampleUser,
@@ -499,7 +499,7 @@ export async function populateSampleCommentPayload(
     ],
   };
 
-  if (operation === 'edited') {
+  if (operation === 'update') {
     data.previous = {
       body: 'Looks ok @(usr_sample_user_id|user@example.com|Sample User)',
       body_plain: 'Looks ok @Sample User',
