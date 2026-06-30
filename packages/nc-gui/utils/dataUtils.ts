@@ -169,7 +169,15 @@ export async function populateInsertObject({
   allowNullFieldIds?: string[]
 }) {
   const missingRequiredColumns = new Set()
-  const insertObj = await meta.columns?.reduce(async (_o: Promise<any>, col) => {
+
+  // `meta` can be transiently undefined (e.g. table meta cleared during
+  // navigation/teardown while a deferred save fires) — bail gracefully instead
+  // of throwing `Cannot read properties of undefined (reading 'columns')`.
+  if (!meta?.columns) {
+    return { missingRequiredColumns, insertObj: {} }
+  }
+
+  const insertObj = await meta.columns.reduce(async (_o: Promise<any>, col) => {
     const o = await _o
 
     // if column is BT relation then check if foreign key is not_null(required)

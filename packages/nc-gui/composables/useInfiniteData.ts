@@ -1334,6 +1334,12 @@ export function useInfiniteData(args: {
       throw new Error('Row metadata is missing')
     }
 
+    // Table meta can be transiently undefined (e.g. cleared during navigation/teardown
+    // while a deferred save fires). Without it the insert cannot proceed — bail gracefully.
+    if (!metaValue?.columns) {
+      return undefined
+    }
+
     const dataCache = getDataCache(path)
 
     currentRow.rowMeta.saving = true
