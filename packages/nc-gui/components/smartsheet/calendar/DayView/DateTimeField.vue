@@ -426,32 +426,51 @@ const recordsAcrossAllRange = computed<{
     }
   }
 
-  // Per-record overlap count: the most records concurrent at any point during this
-  // record's span. The template sizes each card as `max(100% / N, MIN)`, so cards in a
-  // single time-row are equal width (flex-1-like) and fill the visible width when few
-  // overlap, but hold a readable min-width — overflowing, so the outer wrapper scrolls —
-  // when many. A row with fewer records therefore gets wider cards than a busier row.
-  for (const record of recordsByRange) {
-    const fromCol = record.rowMeta.range?.fk_from_col
-    const toCol = record.rowMeta.range?.fk_to_col
-    if (!fromCol) continue
-
-    const { startDate, endDate } = calculateNewDates({
-      startDate: timezoneDayjs.timezonize(record.row[fromCol.title!]),
-      endDate:
-        toCol && dayjs(record.row[toCol.title])?.isValid()
-          ? timezoneDayjs.timezonize(record.row[toCol.title!])
-          : timezoneDayjs.timezonize(record.row[fromCol.title!]).add(1, 'hour').subtract(1, 'minute'),
-      scheduleStart,
-      scheduleEnd,
-    })
-    const gridTimes = getGridTimeSlots(startDate, endDate)
-
-    let overlaps = 1
-    for (let slot = gridTimes.from; slot <= gridTimes.to; slot++) {
-      overlaps = Math.max(overlaps, gridTimeMap.get(slot)?.count ?? 1)
+  // Overlap denominator: every card in a connected overlap cluster must divide by the SAME
+  // column count, or `width` (100% / N) and the column offset (`overLapIteration`) tile on
+  // different grids — a long record spanning from a sparse region into a denser one gets a
+  // smaller width unit than its short neighbours and renders on top of them. The greedy
+  // column packing above already colours each cluster with exactly its max-concurrency
+  // number of columns, so we union every record that co-occurs in a grid slot and give all
+  // members of a cluster its highest column index as `numberOfOverlaps`. Cards therefore
+  // fill the width when a cluster is sparse and shrink to the 48px min (outer wrapper
+  // scrolls) when it is busy — without ever overlapping.
+  const parent = new Map<string, string>()
+  const find = (x: string): string => {
+    let root = x
+    while (parent.get(root) !== root) root = parent.get(root)!
+    let cur = x
+    while (cur !== root) {
+      const next = parent.get(cur)!
+      parent.set(cur, root)
+      cur = next
     }
-    record.rowMeta.numberOfOverlaps = overlaps
+    return root
+  }
+  const union = (a: string, b: string) => {
+    const ra = find(a)
+    const rb = find(b)
+    if (ra !== rb) parent.set(ra, rb)
+  }
+
+  for (const record of recordsByRange) {
+    const id = `${record.rowMeta.id}`
+    if (!parent.has(id)) parent.set(id, id)
+  }
+  // Records sharing any grid slot are mutually overlapping; union them so a long record
+  // bridging two busy regions pulls both into one cluster (transitive via union-find).
+  for (const { id: slotIds } of gridTimeMap.values()) {
+    for (let i = 1; i < slotIds.length; i++) union(`${slotIds[0]}`, `${slotIds[i]}`)
+  }
+
+  const clusterMaxColumns = new Map<string, number>()
+  for (const record of recordsByRange) {
+    const root = find(`${record.rowMeta.id}`)
+    clusterMaxColumns.set(root, Math.max(clusterMaxColumns.get(root) ?? 1, record.rowMeta.overLapIteration ?? 1))
+  }
+
+  for (const record of recordsByRange) {
+    record.rowMeta.numberOfOverlaps = clusterMaxColumns.get(find(`${record.rowMeta.id}`)) ?? 1
 
     record.rowMeta.style = {
       ...record.rowMeta.style,
