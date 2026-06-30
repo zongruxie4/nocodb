@@ -2994,7 +2994,6 @@
     "commentReopened": "comment reopened",
     "onlyCommentsMentionUser": "Only comments that mention a user",
     "filterByCommenter": "Filter by commenter",
-    "triggerOnlyConditionsParentRecord": "Trigger only when conditions match on the parent record",
     "commenterLoopHelp": "Useful for ignoring comments made by integrations or automations.",
     "mentions": "Mentions",
     "anyone": "Anyone",

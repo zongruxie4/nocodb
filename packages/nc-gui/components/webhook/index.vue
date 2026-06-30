@@ -1467,13 +1467,7 @@ const webhookV2AndV3Diff = computed(() => {
                   <div class="w-full flex items-center justify-between h-[28px]">
                     <label class="cursor-pointer flex items-center" @click.prevent="hookRef.condition = !hookRef.condition">
                       <NcSwitch :checked="Boolean(hookRef.condition)" class="nc-check-box-hook-condition">
-                        <span class="!text-nc-content-gray-subtle font-semibold">
-                          {{
-                            hookRef.event === 'comment'
-                              ? $t('labels.triggerOnlyConditionsParentRecord')
-                              : 'Trigger only when conditions match'
-                          }}
-                        </span>
+                        <span class="!text-nc-content-gray-subtle font-semibold"> Trigger only when conditions match </span>
                       </NcSwitch>
                     </label>
 
