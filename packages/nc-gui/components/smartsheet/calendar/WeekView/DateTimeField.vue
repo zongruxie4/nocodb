@@ -668,13 +668,15 @@ const recordsAcrossAllRange = computed<{
 
             const gridTimes = getGridTimeSlots(startDate, endDate)
 
-            for (let gridCounter = gridTimes.from; gridCounter <= gridTimes.to; gridCounter++) {
-              if (gridTimeMap.has(dayIndex) && gridTimeMap.get(dayIndex)?.has(gridCounter)) {
-                const currentSlot = gridTimeMap.get(dayIndex)!.get(gridCounter)!
-                if (!currentSlot.overflowRecords.some((r) => r.rowMeta.id === record.rowMeta.id)) {
-                  currentSlot.overflowRecords.push(record)
-                  gridTimeMap.get(dayIndex)!.set(gridCounter, currentSlot)
-                }
+            // Attribute the overflow record to only the slot it starts in, so a
+            // record spanning multiple hours surfaces a single "+N more" badge at
+            // its start hour instead of one badge per spanned hour row.
+            const startSlot = gridTimes.from
+            if (gridTimeMap.has(dayIndex) && gridTimeMap.get(dayIndex)?.has(startSlot)) {
+              const currentSlot = gridTimeMap.get(dayIndex)!.get(startSlot)!
+              if (!currentSlot.overflowRecords.some((r) => r.rowMeta.id === record.rowMeta.id)) {
+                currentSlot.overflowRecords.push(record)
+                gridTimeMap.get(dayIndex)!.set(startSlot, currentSlot)
               }
             }
           }

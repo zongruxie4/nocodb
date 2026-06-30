@@ -534,13 +534,15 @@ const recordsAcrossAllRange = computed<{
 
           const gridTimes = getGridTimeSlots(startDate, endDate)
 
-          for (let gridCounter = gridTimes.from; gridCounter <= gridTimes.to; gridCounter++) {
-            if (gridTimeMap.has(gridCounter)) {
-              const currentSlot = gridTimeMap.get(gridCounter)!
-              if (!currentSlot.overflowRecords.some((r) => r.rowMeta.id === record.rowMeta.id)) {
-                currentSlot.overflowRecords.push(record)
-                gridTimeMap.set(gridCounter, currentSlot)
-              }
+          // Attribute the overflow record to only the slot it starts in, so a
+          // record spanning multiple hours surfaces a single "+N more" badge at
+          // its start hour instead of one badge per spanned hour row.
+          const startSlot = gridTimes.from
+          if (gridTimeMap.has(startSlot)) {
+            const currentSlot = gridTimeMap.get(startSlot)!
+            if (!currentSlot.overflowRecords.some((r) => r.rowMeta.id === record.rowMeta.id)) {
+              currentSlot.overflowRecords.push(record)
+              gridTimeMap.set(startSlot, currentSlot)
             }
           }
         }
@@ -934,14 +936,18 @@ const isOverflowAcrossHourRange = (hour: dayjs.Dayjs) => {
   const { gridTimeMap } = recordsAcrossAllRange.value
   const startMinute = hour.hour() * 60 + hour.minute()
   const endMinute = hour.hour() * 60 + hour.minute() + 59
-  let overflowCount = 0
 
+  // Count the hidden records attributed to this hour (each overflow record is
+  // registered only at its start slot), so the badge count matches
+  // getOverflowRecords and a multi-hour record is counted once, in its start hour.
+  const uniqueRecordIds = new Set<string>()
   for (let minute = startMinute; minute <= endMinute; minute++) {
-    const recordCount = gridTimeMap.get(minute)?.count ?? 0
-    overflowCount = Math.max(overflowCount, recordCount)
+    for (const rec of gridTimeMap.get(minute)?.overflowRecords ?? []) {
+      uniqueRecordIds.add(rec.rowMeta?.id)
+    }
   }
 
-  return { isOverflow: overflowCount - 8 > 0, overflowCount: overflowCount - 8 }
+  return { isOverflow: uniqueRecordIds.size > 0, overflowCount: uniqueRecordIds.size }
 }
 
 const getOverflowRecords = (hour: dayjs.Dayjs) => {
