@@ -1014,67 +1014,72 @@ const expandRecord = (record: Row) => {
 
         <!-- Records: each card fills its OWN time-row equally — width = max(100% / N, 48px),
              where N is this record's overlap count — so a busier row gets thinner cards (and
-             overflows → the outer wrapper scrolls) while a quieter row gets wider cards. -->
-        <template v-for="record in recordsAcrossAllRange.record" :key="record.rowMeta.id">
-          <div
-            v-if="record.rowMeta.style?.display !== 'none'"
-            :data-testid="`nc-calendar-day-record-${record.row[displayField!.title!]}`"
-            :data-unique-id="record.rowMeta.id"
-            :style="{
-              ...record.rowMeta.style,
-              width: `max(calc(100% / ${record.rowMeta.numberOfOverlaps || 1}), 48px)`,
-              left: `calc(max(calc(100% / ${record.rowMeta.numberOfOverlaps || 1}), 48px) * ${
-                (record.rowMeta.overLapIteration || 1) - 1
-              })`,
-              opacity:
-                (dragRecord === null || record.rowMeta.id === dragRecord?.rowMeta.id) &&
-                (resizeRecord === null || record.rowMeta.id === resizeRecord?.rowMeta.id)
-                  ? 1
-                  : 0.3,
-            }"
-            class="absolute z-2 draggable-record transition group cursor-pointer pointer-events-auto px-0.5"
-            @mousedown="dragStart($event, record)"
-            @mouseleave="hoverRecord = null"
-            @mouseover="hoverRecord = record.rowMeta.id as string"
-            @dragover.prevent
-          >
-            <LazySmartsheetRow :row="record">
-              <LazySmartsheetCalendarVRecordCard
-                :hover="hoverRecord === record.rowMeta.id"
-                :selected="record.rowMeta.id === dragRecord?.rowMeta?.id"
-                :record="record"
-                :dragging="record.rowMeta.id === dragRecord?.rowMeta?.id || record.rowMeta.id === resizeRecord?.rowMeta?.id"
-                :resize="!!record.rowMeta.range?.fk_to_col && isUIAllowed('dataEdit')"
-                :clamp-lines="cardClampLines(record)"
-                @resize-start="onResizeStart"
-              >
-                <template v-for="(field, id) in fields" :key="id">
-                  <LazySmartsheetPlainCell
-                    v-if="!isRowEmpty(record, field!)"
-                    v-model="record.row[field!.title!]"
-                    class="text-xs font-medium"
-                    :bold="getFieldStyle(field).bold"
-                    :column="field"
-                    :italic="getFieldStyle(field).italic"
-                    :underline="getFieldStyle(field).underline"
-                  />
-                </template>
-                <template #tooltip>
-                  <SmartsheetRecordFieldsTooltip :record="record" :fields="fields" />
-                </template>
-                <template #time>
-                  <div class="text-xs font-medium text-nc-content-gray-disabled">
-                    {{
-                      timezoneDayjs
-                        .timezonize(record.row[record.rowMeta.range?.fk_from_col!.title!])
-                        .format(is12hrTimeColumn(record.rowMeta.range?.fk_from_col) ? 'h:mm a' : 'HH:mm')
-                    }}
-                  </div>
-                </template>
-              </LazySmartsheetCalendarVRecordCard>
-            </LazySmartsheetRow>
-          </div>
-        </template>
+             overflows → the outer wrapper scrolls) while a quieter row gets wider cards.
+             The layer is pointer-events-none and inset 8px from the left so clicks between
+             cards (and on the left rail) fall through to the hour grid below — keeping every
+             hour selectable even when a full-width record covers it. -->
+        <div class="absolute z-2 inset-y-0 left-2 right-0 pointer-events-none" data-testid="nc-calendar-day-record-container">
+          <template v-for="record in recordsAcrossAllRange.record" :key="record.rowMeta.id">
+            <div
+              v-if="record.rowMeta.style?.display !== 'none'"
+              :data-testid="`nc-calendar-day-record-${record.row[displayField!.title!]}`"
+              :data-unique-id="record.rowMeta.id"
+              :style="{
+                ...record.rowMeta.style,
+                width: `max(calc(100% / ${record.rowMeta.numberOfOverlaps || 1}), 48px)`,
+                left: `calc(max(calc(100% / ${record.rowMeta.numberOfOverlaps || 1}), 48px) * ${
+                  (record.rowMeta.overLapIteration || 1) - 1
+                })`,
+                opacity:
+                  (dragRecord === null || record.rowMeta.id === dragRecord?.rowMeta.id) &&
+                  (resizeRecord === null || record.rowMeta.id === resizeRecord?.rowMeta.id)
+                    ? 1
+                    : 0.3,
+              }"
+              class="absolute draggable-record transition group cursor-pointer pointer-events-auto px-0.5"
+              @mousedown="dragStart($event, record)"
+              @mouseleave="hoverRecord = null"
+              @mouseover="hoverRecord = record.rowMeta.id as string"
+              @dragover.prevent
+            >
+              <LazySmartsheetRow :row="record">
+                <LazySmartsheetCalendarVRecordCard
+                  :hover="hoverRecord === record.rowMeta.id"
+                  :selected="record.rowMeta.id === dragRecord?.rowMeta?.id"
+                  :record="record"
+                  :dragging="record.rowMeta.id === dragRecord?.rowMeta?.id || record.rowMeta.id === resizeRecord?.rowMeta?.id"
+                  :resize="!!record.rowMeta.range?.fk_to_col && isUIAllowed('dataEdit')"
+                  :clamp-lines="cardClampLines(record)"
+                  @resize-start="onResizeStart"
+                >
+                  <template v-for="(field, id) in fields" :key="id">
+                    <LazySmartsheetPlainCell
+                      v-if="!isRowEmpty(record, field!)"
+                      v-model="record.row[field!.title!]"
+                      class="text-xs font-medium"
+                      :bold="getFieldStyle(field).bold"
+                      :column="field"
+                      :italic="getFieldStyle(field).italic"
+                      :underline="getFieldStyle(field).underline"
+                    />
+                  </template>
+                  <template #tooltip>
+                    <SmartsheetRecordFieldsTooltip :record="record" :fields="fields" />
+                  </template>
+                  <template #time>
+                    <div class="text-xs font-medium text-nc-content-gray-disabled">
+                      {{
+                        timezoneDayjs
+                          .timezonize(record.row[record.rowMeta.range?.fk_from_col!.title!])
+                          .format(is12hrTimeColumn(record.rowMeta.range?.fk_from_col) ? 'h:mm a' : 'HH:mm')
+                      }}
+                    </div>
+                  </template>
+                </LazySmartsheetCalendarVRecordCard>
+              </LazySmartsheetRow>
+            </div>
+          </template>
+        </div>
       </div>
     </div>
   </div>
