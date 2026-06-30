@@ -975,18 +975,33 @@ const viewMore = (hour: dayjs.Dayjs) => {
   showSideMenu.value = true
 }
 
-// Number of records shown on a given day column (by visible day index). Used to label
-// the day header's "view all in day view" affordance.
+// Records shown on a given day column (by visible day index).
 const dayRecordCount = (dayIndex: number) => {
   return recordsAcrossAllRange.value.records.filter((r) => (r.rowMeta.dayIndex ?? -1) === dayIndex).length
 }
 
-// On a busy week day cards shrink to slivers; clicking the day header opens that day in
-// the (readable) day view instead.
+// Busiest concurrent-overlap count on a day column — drives the per-card sliver width.
+const dayMaxOverlaps = (dayIndex: number) => {
+  return recordsAcrossAllRange.value.records
+    .filter((r) => (r.rowMeta.dayIndex ?? -1) === dayIndex)
+    .reduce((mx, r) => Math.max(mx, r.rowMeta.numberOfOverlaps ?? 1), 0)
+}
+
+// A day is "dense" when its busiest overlap shrinks cards below a readable width. Then the
+// thin slivers aren't practical to read/click, so we surface an Airtable-style "view all in
+// day view" overlay over the column instead (see template).
+const WEEK_READABLE_CARD_WIDTH = 36
+const isDenseDay = (dayIndex: number) => {
+  const maxOv = dayMaxOverlaps(dayIndex)
+  if (maxOv < 2) return false
+  return (columnWidthPx(dayIndex) - 3) / maxOv < WEEK_READABLE_CARD_WIDTH
+}
+
+// Clicking the dense-day overlay opens that day in the (readable) day view.
 const openDayView = (date: dayjs.Dayjs) => {
   selectedDate.value = date
   activeCalendarView.value = 'day'
-  $e('c:calendar:week-day-header:open-day-view')
+  $e('c:calendar:week:open-day-view')
 }
 
 const isOverflowAcrossHourRange = (hour: dayjs.Dayjs) => {
@@ -1091,33 +1106,17 @@ watch(
       </div>
     </div>
     <div class="flex sticky h-6 z-4 top-0 pl-16 bg-nc-bg-gray-extralight w-full">
-      <NcTooltip
+      <div
         v-for="(date, index) in datesHours"
         :key="date[0].toISOString()"
+        :class="{
+          'text-nc-content-brand': date[0].isSame(timezoneDayjs.dayjsTz(), 'date'),
+        }"
         :style="{ width: columnWidthPct(index) }"
-        :disabled="!dayRecordCount(index)"
-        class="border-nc-border-gray-medium last:border-r-0 border-b-1 border-l-1 border-r-0 bg-nc-bg-gray-extralight"
+        class="text-center text-[10px] font-semibold leading-4 flex items-center justify-center uppercase text-nc-content-gray-muted py-1 border-nc-border-gray-medium last:border-r-0 border-b-1 border-l-1 border-r-0 bg-nc-bg-gray-extralight"
       >
-        <template #title>
-          {{ $t('tooltip.viewAllEventsInDayView', { count: dayRecordCount(index) }) }}
-        </template>
-        <div
-          :class="{
-            'text-nc-content-brand': date[0].isSame(timezoneDayjs.dayjsTz(), 'date'),
-          }"
-          class="h-full text-center text-[10px] font-semibold leading-4 flex items-center justify-center gap-1 uppercase text-nc-content-gray-muted py-1 cursor-pointer hover:bg-nc-bg-gray-light transition-colors"
-          data-testid="nc-calendar-week-day-header"
-          @click="openDayView(date[0])"
-        >
-          {{ timezoneDayjs.dayjsTz(date[0]).format('DD ddd') }}
-          <span
-            v-if="dayRecordCount(index) > 3"
-            class="normal-case px-1 leading-3.5 rounded bg-nc-bg-gray-medium text-nc-content-gray-subtle"
-          >
-            {{ dayRecordCount(index) }}
-          </span>
-        </div>
-      </NcTooltip>
+        {{ timezoneDayjs.dayjsTz(date[0]).format('DD ddd') }}
+      </div>
     </div>
     <div
       :class="{
@@ -1296,11 +1295,38 @@ watch(
           </div>
         </template>
       </div>
+
+      <!-- Dense-day overlay (Airtable-style): on a busy day the cards shrink to thin slivers,
+           so hovering the column highlights it and reveals a "View all N events in day view"
+           pill; clicking anywhere in the column opens that day in the readable day view. -->
+      <div class="absolute inset-0 z-3 overflow-hidden !mt-5.95 pointer-events-none">
+        <template v-for="(date, index) in datesHours" :key="`dense-${index}`">
+          <div
+            v-if="isDenseDay(index)"
+            :style="{ left: `${columnOffsetPx(index)}px`, width: `${columnWidthPx(index)}px` }"
+            class="nc-dense-day-overlay group absolute top-0 bottom-0 pointer-events-auto cursor-pointer flex items-center justify-center transition-colors"
+            data-testid="nc-calendar-week-dense-overlay"
+            @click="openDayView(date[0])"
+          >
+            <span
+              class="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-gray-800 text-white text-xs font-semibold leading-4 rounded-md px-2 py-1 shadow-md text-center max-w-[92%]"
+            >
+              {{ $t('tooltip.viewAllEventsInDayView', { count: dayRecordCount(index) }) }}
+            </span>
+          </div>
+        </template>
+      </div>
     </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
+// Subtle highlight when hovering a dense day's "view all in day view" overlay; the thin
+// slivers underneath stay faintly visible.
+.nc-dense-day-overlay:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
 .prevent-select {
   -webkit-user-select: none;
   -ms-user-select: none;
