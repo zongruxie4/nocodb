@@ -5,15 +5,16 @@ import {
   NcBaseErrorv2,
   NcErrorType,
   serializeImportValue,
+  UITypes,
 } from 'nocodb-sdk';
 import type { Job } from 'bull';
 import type {
+  ColumnReqType,
   ColumnType,
   FileImportOptions,
   FileImportSheet,
   FileImportType,
   NcRequest,
-  UITypes,
   UserType,
 } from 'nocodb-sdk';
 import type { DataImportJobData } from '~/interface/Jobs';
@@ -26,6 +27,7 @@ import {
 import { getImportHandler } from '~/modules/jobs/jobs/data-import/handlers';
 import { JobsLogService } from '~/modules/jobs/jobs/jobs-log.service';
 import { TablesService } from '~/services/tables.service';
+import { ColumnsService } from '~/services/columns.service';
 import { BulkDataAliasService } from '~/services/bulk-data-alias.service';
 import { Audit, Model, Source } from '~/models';
 import { NcError } from '~/helpers/catchError';
@@ -131,6 +133,7 @@ export class DataImportProcessor {
 
   constructor(
     private readonly tablesService: TablesService,
+    private readonly columnsService: ColumnsService,
     private readonly bulkDataService: BulkDataAliasService,
     private readonly jobsLogService: JobsLogService,
   ) {}
@@ -375,6 +378,23 @@ export class DataImportProcessor {
     if (!tableName) tableName = model.title;
     await model.getColumns(context);
 
+    // ── Create any user-requested new columns on the existing table before
+    // resolving the map, then refresh so they're picked up below.
+    if (
+      options.importDataOnly &&
+      spec.columnMapping?.some((m) => m.enabled && m.createColumn)
+    ) {
+      await this.createMappedColumns({
+        context,
+        tableId,
+        spec,
+        user,
+        req,
+        log,
+      });
+      await model.getColumns(context);
+    }
+
     // ── Build source-col → dest-col map
     const tableColumns = model.columns as any[];
     const findDest = (name: string) =>
@@ -491,6 +511,64 @@ export class DataImportProcessor {
       linksFailed: stats.linksFailed,
       errors: stats.errors.slice(0, 100),
     };
+  }
+
+  /**
+   * Create the new columns requested via `columnMapping[].createColumn` on an
+   * existing table. Each new column inherits the source column's title and
+   * type (text by default — the importer detects no types in data-only mode).
+   * A title that already exists is skipped (treated as a map to the existing
+   * column); `columnAdd` itself dedupes the generated `column_name`.
+   */
+  private async createMappedColumns(params: {
+    context: NcContext;
+    tableId: string;
+    spec: FileImportSheet;
+    user: Partial<UserType>;
+    req: NcRequest;
+    log: (msg: string, verbose?: boolean) => void;
+  }): Promise<void> {
+    const { context, tableId, spec, user, req, log } = params;
+
+    const model = await Model.get(context, tableId);
+    if (!model) NcError.tableNotFound(tableId);
+    await model.getColumns(context);
+
+    // Titles/column_names already in use — skip creating duplicates so the
+    // mapping resolves against the existing column instead.
+    const taken = new Set<string>();
+    for (const c of model.columns as any[]) {
+      if (c.title) taken.add(c.title);
+      if (c.column_name) taken.add(c.column_name);
+    }
+
+    for (const m of spec.columnMapping ?? []) {
+      if (!m.enabled || !m.createColumn) continue;
+
+      const src = (spec.columns ?? []).find(
+        (c) => c.column_name === m.sourceCn || c.title === m.sourceCn,
+      );
+      if (!src) continue;
+
+      const title = (m.destCn || src.title || src.column_name)?.trim();
+      if (!title || taken.has(title)) continue;
+
+      const column = {
+        title,
+        uidt: (src.uidt as UITypes) || UITypes.SingleLineText,
+        ...(src.dtxp ? { dtxp: src.dtxp } : {}),
+        ...(src.meta ? { meta: src.meta } : {}),
+      } as ColumnReqType;
+
+      log(`Creating field "${title}"...`, true);
+      await this.columnsService.columnAdd(context, {
+        tableId,
+        column,
+        user: user as UserType,
+        req,
+      });
+      taken.add(title);
+    }
   }
 
   /**

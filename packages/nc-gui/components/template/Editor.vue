@@ -59,6 +59,11 @@ const meta = inject(MetaInj, ref())
 
 const DEFAULT_LINK_DELIMITER = ','
 
+// Sentinel value for the "Create new field" option in the destination dropdown.
+// Selecting it flips the mapping into create-column mode instead of pointing at
+// an existing column.
+const CREATE_NEW_FIELD_VALUE = '__nc_create_new_field__'
+
 function getDestColumn(destCn?: string): ColumnType | undefined {
   if (!destCn) return undefined
   return (meta.value?.columns || []).find((c) => c.title === destCn)
@@ -392,7 +397,50 @@ onMounted(() => {
 })
 
 function filterOption(input: string, option: Option) {
+  // Keep the "Create new field" action visible regardless of the search term.
+  if (option.value === CREATE_NEW_FIELD_VALUE) return true
   return option.value.toUpperCase().includes(input.toUpperCase())
+}
+
+// Build a unique title for a newly-created field, avoiding clashes with existing
+// table columns and with titles already chosen by other source-column mappings.
+function getUniqueNewFieldTitle(baseTitle: string, tn: string) {
+  const taken = new Set<string>()
+  for (const c of meta.value?.columns || []) {
+    if (c.title) taken.add(c.title)
+  }
+  for (const r of srcDestMapping.value[tn] || []) {
+    if (r.destCn) taken.add(r.destCn)
+  }
+
+  const base = (baseTitle || '').trim() || 'Field'
+  let title = base
+  let i = 1
+  while (taken.has(title)) {
+    title = `${base} ${i++}`
+  }
+  return title
+}
+
+// Handle a destination selection: the sentinel flips the row into create-column
+// mode (named after the source column), anything else maps to an existing field.
+function handleDestChange(value: string | undefined, record: Record<string, any>, tn: string) {
+  if (value === CREATE_NEW_FIELD_VALUE) {
+    record.createColumn = true
+    record.destCn = getUniqueNewFieldTitle(record.srcTitle, tn)
+    record.enabled = true
+    return
+  }
+
+  record.createColumn = false
+  record.enabled = !!value
+}
+
+// Revert a create-column row back to an unmapped state.
+function clearCreateColumn(record: Record<string, any>) {
+  record.createColumn = false
+  record.destCn = undefined
+  record.enabled = false
 }
 
 function parseAndLoadTemplate() {
@@ -505,6 +553,12 @@ function fieldsValidation(record: Record<string, any>, tn: string) {
   if ((srcDestMapping.value[tn] || []).filter((v: Record<string, any>) => v.destCn === record.destCn).length > 1) {
     message.error(t('msg.error.duplicateMappingFound'))
     return false
+  }
+
+  // New columns are created as text and accept any value — there is no existing
+  // destination column to type-check against, so the row is valid as-is.
+  if (record.createColumn) {
+    return true
   }
 
   const v = columns.value.find((c) => c.title === record.destCn) as Record<string, any>
@@ -722,7 +776,10 @@ async function importViaJob() {
                 sourceCn: m.srcCn,
                 destCn: m.destCn,
                 enabled: m.enabled,
-                ...(isLinkDest(m.destCn) ? { linkConfig: { delimiter: m.delimiter || DEFAULT_LINK_DELIMITER } } : {}),
+                ...(m.createColumn ? { createColumn: true } : {}),
+                ...(!m.createColumn && isLinkDest(m.destCn)
+                  ? { linkConfig: { delimiter: m.delimiter || DEFAULT_LINK_DELIMITER } }
+                  : {}),
               }))
             : undefined,
         })
@@ -835,6 +892,7 @@ function mapDefaultColumns() {
         srcTitle: col.title,
         destCn: undefined as string | undefined,
         enabled: true,
+        createColumn: false,
         delimiter: DEFAULT_LINK_DELIMITER,
       }
       if (columns.value) {
@@ -1143,7 +1201,31 @@ function getErrorByTableName(tableName: string) {
 
                 <template v-else-if="column.key === 'destination_column'">
                   <div class="w-full flex items-center gap-2">
-                    <a-form-item class="!my-0 flex-1 min-w-0">
+                    <div
+                      v-if="record.createColumn"
+                      class="nc-import-new-field flex-1 min-w-0 flex items-center gap-2 pl-2 pr-1 h-7 rounded-lg"
+                      data-testid="nc-import-new-field"
+                    >
+                      <GeneralIcon icon="ncPlus" class="flex-none w-3.5 h-3.5 text-nc-content-brand" />
+                      <NcTooltip class="truncate flex-1 text-nc-content-gray text-sm font-weight-500" show-on-truncate-only>
+                        <template #title>{{ record.destCn }}</template>
+                        {{ record.destCn }}
+                      </NcTooltip>
+                      <NcBadge color="brand" :border="false" class="flex-none !px-1.5 !h-5 text-tiny">
+                        {{ $t('general.new') }}
+                      </NcBadge>
+                      <NcButton
+                        type="text"
+                        size="xsmall"
+                        class="flex-none !h-5 !w-5"
+                        icon-only
+                        data-testid="nc-import-new-field-clear"
+                        @click="clearCreateColumn(record)"
+                      >
+                        <GeneralIcon icon="close" class="w-3.5 h-3.5 text-nc-content-gray-muted" />
+                      </NcButton>
+                    </div>
+                    <a-form-item v-else class="!my-0 flex-1 min-w-0">
                       <NcSelect
                         v-model:value="record.destCn"
                         class="nc-field-select-input w-full nc-select-shadow !border-none"
@@ -1152,11 +1234,7 @@ function getErrorByTableName(tableName: string) {
                         :placeholder="`-${$t('labels.multiField.selectField').toLowerCase()}-`"
                         :filter-option="filterOption"
                         dropdown-class-name="nc-dropdown-filter-field"
-                        @update:value="
-                          (value) => {
-                            record.enabled = !!value
-                          }
-                        "
+                        @update:value="(value) => handleDestChange(value, record, table.table_name)"
                       >
                         <template #suffixIcon>
                           <GeneralIcon icon="arrowDown" class="text-current" />
@@ -1185,6 +1263,16 @@ function getErrorByTableName(tableName: string) {
                               id="nc-selected-item-icon"
                               class="flex-none text-primary w-4 h-4"
                             />
+                          </div>
+                        </a-select-option>
+                        <a-select-option
+                          :key="CREATE_NEW_FIELD_VALUE"
+                          :value="CREATE_NEW_FIELD_VALUE"
+                          class="nc-import-create-new-field-option"
+                        >
+                          <div class="flex items-center gap-2 w-full text-nc-content-brand">
+                            <GeneralIcon icon="ncPlus" class="flex-none w-3.5 h-3.5" />
+                            <span class="truncate flex-1 text-sm font-weight-500">{{ $t('labels.createNewField') }}</span>
                           </div>
                         </a-select-option>
                       </NcSelect>
@@ -1438,6 +1526,10 @@ function getErrorByTableName(tableName: string) {
 <style scoped lang="scss">
 .template-collapse {
   @apply bg-nc-bg-default border-nc-border-gray-medium;
+}
+
+.nc-import-new-field {
+  @apply bg-nc-bg-brand;
 }
 
 :deep(.ant-collapse-header) {
