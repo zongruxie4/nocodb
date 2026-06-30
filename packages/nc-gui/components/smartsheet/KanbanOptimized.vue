@@ -104,6 +104,9 @@ const fieldsWithoutDisplay = computed(() => fields.value.filter((f) => !isPrimar
 
 const displayField = computed(() => meta.value?.columns?.find((c) => c.pv && fields.value.includes(c)) ?? null)
 
+// Card-title tooltip is only meaningful for non-virtual text / number display values (the ones that overflow).
+const isDisplayFieldTextOrNumber = computed(() => isTextOrNumberColumn(displayField.value))
+
 const coverImageColumn: any = computed(() =>
   meta.value?.columnsById
     ? meta.value.columnsById[kanbanMetaData.value?.fk_cover_image_col_id as keyof typeof meta.value.columnsById]
@@ -1729,12 +1732,7 @@ const resetPointerEvent = (record: RowType, col: ColumnType) => {
                                           class="w-1 flex-none min-h-4 rounded-sm"
                                           :style="getCellLeftBorderStyle(record, displayField.id)"
                                         ></div>
-                                        <h2
-                                          class="nc-card-display-value-wrapper flex-1 min-w-0"
-                                          :class="{
-                                            '!children:pointer-events-auto': resetPointerEvent(record, displayField),
-                                          }"
-                                        >
+                                        <h2 class="nc-card-display-value-wrapper flex-1 min-w-0 !children:pointer-events-auto">
                                           <template
                                             v-if="!isRowEmpty(record, displayField) || isAllowToRenderRowEmptyField(displayField)"
                                           >
@@ -1745,15 +1743,23 @@ const resetPointerEvent = (record: RowType, col: ColumnType) => {
                                               :column="displayField"
                                               :row="record"
                                             />
-
-                                            <LazySmartsheetCell
+                                            <NcTooltip
                                               v-else
-                                              v-model="record.row[displayField.title]"
-                                              class="!text-nc-content-brand"
-                                              :column="displayField"
-                                              :edit-enabled="false"
-                                              :read-only="true"
-                                            />
+                                              class="!w-full max-w-full"
+                                              placement="top"
+                                              show-on-truncate-only
+                                              truncate-selector=".nc-cell-field"
+                                              :disabled="!isDisplayFieldTextOrNumber"
+                                              :title="`${record.row[displayField.title] ?? ''}`"
+                                            >
+                                              <LazySmartsheetCell
+                                                v-model="record.row[displayField.title]"
+                                                class="!text-nc-content-brand"
+                                                :column="displayField"
+                                                :edit-enabled="false"
+                                                :read-only="true"
+                                              />
+                                            </NcTooltip>
                                           </template>
                                           <template v-else> -</template>
                                         </h2>
@@ -2305,20 +2311,20 @@ const resetPointerEvent = (record: RowType, col: ColumnType) => {
 }
 
 .nc-card-display-value-wrapper {
-  @apply my-0 text-xl leading-8 text-nc-content-gray-subtle2;
+  @apply my-0 text-subHeading2 text-nc-content-gray-subtle2;
 
-  .nc-cell,
-  .nc-virtual-cell {
-    @apply text-xl leading-8;
+  :deep(.nc-cell),
+  :deep(.nc-virtual-cell) {
+    @apply text-subHeading2;
 
-    :deep(.nc-cell-field),
-    :deep(input),
-    :deep(textarea),
-    :deep(.nc-cell-field-link) {
-      @apply !text-xl leading-8 text-nc-content-gray-subtle2;
+    .nc-cell-field,
+    input,
+    textarea,
+    .nc-cell-field-link {
+      @apply !text-subHeading2 text-nc-content-gray-subtle2;
 
       &:not(.ant-select-selection-search-input) {
-        @apply !text-xl leading-8 text-nc-content-gray-subtle2;
+        @apply !text-subHeading2 text-nc-content-gray-subtle2;
       }
     }
   }
