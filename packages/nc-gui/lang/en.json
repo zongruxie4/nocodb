@@ -1444,6 +1444,7 @@
     "manyToOne": "Many to One"
   },
   "labels": {
+    "createNewField": "Create new field",
     "chatImport": {
       "columnCount": "{count} column | {count} columns",
       "createNewTable": "Create a new table",

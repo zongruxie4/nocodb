@@ -45,6 +45,11 @@ export interface FileImportColumnMapping {
   enabled: boolean;
   /** Set when `destCn` resolves to a link (LTAR) column. */
   linkConfig?: FileImportLinkConfig;
+  /**
+   * When true, create a new column on the existing table (named `destCn`)
+   * from the source column's definition instead of mapping to an existing one.
+   */
+  createColumn?: boolean;
 }
 
 /**

@@ -5,15 +5,16 @@ import {
   NcBaseErrorv2,
   NcErrorType,
   serializeImportValue,
+  UITypes,
 } from 'nocodb-sdk';
 import type { Job } from 'bull';
 import type {
+  ColumnReqType,
   ColumnType,
   FileImportOptions,
   FileImportSheet,
   FileImportType,
   NcRequest,
-  UITypes,
   UserType,
 } from 'nocodb-sdk';
 import type { DataImportJobData } from '~/interface/Jobs';
@@ -26,6 +27,7 @@ import {
 import { getImportHandler } from '~/modules/jobs/jobs/data-import/handlers';
 import { JobsLogService } from '~/modules/jobs/jobs/jobs-log.service';
 import { TablesService } from '~/services/tables.service';
+import { ColumnsService } from '~/services/columns.service';
 import { BulkDataAliasService } from '~/services/bulk-data-alias.service';
 import { Audit, Model, Source } from '~/models';
 import { NcError } from '~/helpers/catchError';
@@ -131,6 +133,7 @@ export class DataImportProcessor {
 
   constructor(
     private readonly tablesService: TablesService,
+    private readonly columnsService: ColumnsService,
     private readonly bulkDataService: BulkDataAliasService,
     private readonly jobsLogService: JobsLogService,
   ) {}
@@ -375,6 +378,24 @@ export class DataImportProcessor {
     if (!tableName) tableName = model.title;
     await model.getColumns(context);
 
+    // ── Create any user-requested new columns on the existing table before
+    // resolving the map, then refresh so they're picked up below.
+    let createdColumns = new Map<string, ColumnType>();
+    if (
+      options.importDataOnly &&
+      spec.columnMapping?.some((m) => m.enabled && m.createColumn)
+    ) {
+      createdColumns = await this.createMappedColumns({
+        context,
+        tableId,
+        spec,
+        user,
+        req,
+        log,
+      });
+      await model.getColumns(context);
+    }
+
     // ── Build source-col → dest-col map
     const tableColumns = model.columns as any[];
     const findDest = (name: string) =>
@@ -411,7 +432,15 @@ export class DataImportProcessor {
         const src = (spec.columns ?? []).find(
           (c) => c.column_name === m.sourceCn || c.title === m.sourceCn,
         );
-        const dest = findDest(m.destCn);
+        // For a "create new field" row, map to the column we actually created
+        // (resolved by id). If creation was skipped because the title matched an
+        // existing field, fall back to that existing column by TITLE only —
+        // never by column_name, so a name-only clash can't silently reroute the
+        // imported data into an unrelated existing column.
+        const dest = m.createColumn
+          ? createdColumns.get(m.sourceCn) ??
+            tableColumns.find((c) => c.title === m.destCn)
+          : findDest(m.destCn);
         if (src && dest) {
           classifyDest(src.column_name, dest, m.linkConfig?.delimiter);
         }
@@ -491,6 +520,103 @@ export class DataImportProcessor {
       linksFailed: stats.linksFailed,
       errors: stats.errors.slice(0, 100),
     };
+  }
+
+  /**
+   * Create the new columns requested via `columnMapping[].createColumn` on an
+   * existing table. Each new column inherits the source column's title and
+   * type (text by default — the importer detects no types in data-only mode).
+   *
+   * Skipping is keyed on existing column TITLES only: a create request whose
+   * title matches an existing title is treated as "map to that field" (and
+   * skipped). We intentionally do NOT skip on a `column_name`-only match —
+   * `columnAdd` dedupes the generated `column_name`, and skipping there would
+   * leave the row to be silently rerouted into an unrelated existing column.
+   *
+   * A per-column `columnAdd` failure (e.g. plan column limit, sandbox guard) is
+   * logged and skipped rather than aborting the whole import.
+   *
+   * Returns a `sourceCn -> created column` map so the caller can map those rows
+   * to the column actually created instead of resolving by name (which could
+   * otherwise match a pre-existing column that shares the same name).
+   */
+  private async createMappedColumns(params: {
+    context: NcContext;
+    tableId: string;
+    spec: FileImportSheet;
+    user: Partial<UserType>;
+    req: NcRequest;
+    log: (msg: string, verbose?: boolean) => void;
+  }): Promise<Map<string, ColumnType>> {
+    const { context, tableId, spec, user, req, log } = params;
+
+    const model = await Model.get(context, tableId);
+    if (!model) NcError.tableNotFound(tableId);
+    await model.getColumns(context);
+
+    // Existing titles — a create request matching one of these maps to the
+    // existing field instead of creating a duplicate.
+    const takenTitles = new Set<string>();
+    for (const c of model.columns as any[]) {
+      if (c.title) takenTitles.add(c.title);
+    }
+
+    // sourceCn -> title we created for it (resolved to columns after the loop).
+    const createdTitleBySource = new Map<string, string>();
+
+    for (const m of spec.columnMapping ?? []) {
+      if (!m.enabled || !m.createColumn) continue;
+
+      const src = (spec.columns ?? []).find(
+        (c) => c.column_name === m.sourceCn || c.title === m.sourceCn,
+      );
+      if (!src) continue;
+
+      const title = (m.destCn || src.title || src.column_name)?.trim();
+      if (!title || takenTitles.has(title)) continue;
+
+      const column = {
+        title,
+        uidt: (src.uidt as UITypes) || UITypes.SingleLineText,
+        ...(src.dtxp ? { dtxp: src.dtxp } : {}),
+        ...(src.meta ? { meta: src.meta } : {}),
+      } as ColumnReqType;
+
+      log(`Creating field "${title}"...`, true);
+      try {
+        await this.columnsService.columnAdd(context, {
+          tableId,
+          column,
+          user: user as UserType,
+          req,
+        });
+        takenTitles.add(title);
+        createdTitleBySource.set(m.sourceCn, title);
+      } catch (e) {
+        // Don't fail the whole import for one field — skip it and let this
+        // source column fall through as unmapped.
+        log(
+          `Failed to create field "${title}": ${
+            (e as Error)?.message ?? e
+          }. Skipping this field.`,
+          true,
+        );
+      }
+    }
+
+    const created = new Map<string, ColumnType>();
+    if (createdTitleBySource.size) {
+      await model.getColumns(context);
+      const byTitle = new Map<string, any>();
+      for (const c of model.columns as any[]) {
+        if (c.title) byTitle.set(c.title, c);
+      }
+      for (const [sourceCn, title] of createdTitleBySource) {
+        const col = byTitle.get(title);
+        if (col) created.set(sourceCn, col);
+      }
+    }
+    return created;
   }
 
   /**
