@@ -713,12 +713,21 @@ export enum HookOperationCode {
   update = 1 << 1, // 2
   delete = 1 << 2, // 4
   trigger = 1 << 3, // 8
+  // Comment-source operations (event = 'comment') reuse the insert/update/delete
+  // bits above for add/edit/delete (same semantics as records, fields and
+  // views). resolve/reopen have no record equivalent, so they get their own bits.
+  resolved = 1 << 4, // 16
+  reopened = 1 << 5, // 32
 }
 
 export enum WebhookActions {
   INSERT = 'insert',
   UPDATE = 'update',
   DELETE = 'delete',
+  // Comment-source actions without a record equivalent. Comment add/edit/delete
+  // reuse INSERT/UPDATE/DELETE above.
+  RESOLVED = 'resolved',
+  REOPENED = 'reopened',
 }
 
 export enum WebhookEvents {
@@ -727,6 +736,7 @@ export enum WebhookEvents {
   MANUAL = 'manual',
   VIEW = 'view',
   FIELD = 'field',
+  COMMENT = 'comment',
 }
 
 export enum ViewSettingOverrideOptions {

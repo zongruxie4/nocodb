@@ -21,11 +21,13 @@ import { captureForTrace } from '~/decorators/trace-command.decorator';
 import { validatePayload } from '~/helpers';
 import { NcError } from '~/helpers/catchError';
 import {
+  populateSampleCommentPayload,
   populateSamplePayload,
   populateSamplePayloadV2,
   populateSamplePayloadView,
 } from '~/helpers/populateSamplePayload';
 import { invokeWebhook } from '~/helpers/webhookHelpers';
+import { isEE } from '~/utils';
 import { ButtonColumn, Filter, Hook, HookLog, Model } from '~/models';
 import { DatasService } from '~/services/datas.service';
 import { JobTypes } from '~/interface/Jobs';
@@ -43,6 +45,17 @@ export class HooksService {
     @Inject('JobsService') protected readonly jobsService: IJobsService,
     protected readonly metaDependencyEventHandler: MetaDependencyEventHandler,
   ) {}
+
+  // Comment-source webhooks are an EE-only trigger (the firing handler lives in
+  // the EE layer). Reject creating/updating one on a CE backend so a hook that
+  // can never fire isn't silently persisted.
+  validateCommentEvent(context: NcContext, hook: HookReqType) {
+    if (hook?.event === WebhookEvents.COMMENT && !isEE) {
+      NcError.get(context).badRequest(
+        'Comment webhooks are only available in NocoDB Enterprise',
+      );
+    }
+  }
 
   validateHookPayload(notificationJsonOrObject: string | Record<string, any>) {
     let notification: { type?: string } = {};
@@ -106,6 +119,7 @@ export class HooksService {
     if (!option?.isTableDuplicate) {
       validatePayload('swagger.json#/components/schemas/HookReq', param.hook);
     }
+    this.validateCommentEvent(context, param.hook);
     this.validateHookPayload(param.hook.notification);
 
     // if version is not in SUPPORTED_HOOK_VERSION, that means it's a duplicate table activity
@@ -257,6 +271,7 @@ export class HooksService {
       NcError.get(context).hookNotFound(param.hookId);
     }
 
+    this.validateCommentEvent(context, param.hook);
     this.validateHookPayload(param.hook.notification);
 
     // If the webhook is being changed to manual trigger, set it to active
@@ -424,13 +439,17 @@ export class HooksService {
         (hook.notification as any).trigger_form_id,
       );
     }
+
+    // Comment webhooks carry the comment envelope directly as `newData`
+    // (constructCommentWebHookData wraps it) — there are no record `rows`.
+    const isCommentHook = (hook?.event as any) === WebhookEvents.COMMENT;
     try {
       await invokeWebhook(context, {
         hook: new Hook(hook),
         model: model,
         view: view,
-        prevData: data?.previous_rows ?? null,
-        newData: data.rows,
+        prevData: isCommentHook ? null : data?.previous_rows ?? null,
+        newData: isCommentHook ? data : data.rows,
         user: user,
         testFilters: (hook as any)?.filters,
         throwErrorOnFailure: true,
@@ -486,6 +505,16 @@ export class HooksService {
         version: param.version,
       });
     }
+    if (param.event === WebhookEvents.COMMENT) {
+      return await populateSampleCommentPayload(
+        context,
+        model,
+        param.operation,
+        param.version,
+        param.includeUser,
+        param.user,
+      );
+    }
 
     return await populateSamplePayloadV2(
       context,
@@ -528,6 +557,16 @@ export class HooksService {
         user: undefined,
         version: param.version,
       });
+    }
+    if (param.event === WebhookEvents.COMMENT) {
+      return await populateSampleCommentPayload(
+        context,
+        model,
+        param.operation as string,
+        param.version,
+        param.includeUser,
+        undefined,
+      );
     }
 
     return await populateSamplePayloadV2(

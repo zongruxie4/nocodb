@@ -151,8 +151,15 @@ let hookRef = reactive<
   condition: false,
   trigger_field: false,
   trigger_fields: [],
+  comment_config: undefined,
   active: true,
   version: 'v3',
+})
+
+// Default comment-filter config used when switching the source to "Comment".
+const defaultCommentConfig = () => ({
+  mention: { enabled: false, scope: 'anyone' as const, user_ids: [] as string[] },
+  commenter: { enabled: false, mode: 'exclude' as const, user_ids: [] as string[] },
 })
 
 const operationsEnum = computed(() => {
@@ -255,7 +262,7 @@ const toggleOperation = (operation: string) => {
   hookRef.operation = ops // this will trigger hookRef.operation watch
   // event other than 'field', 'view', 'after' has no 'send me everything'
   sendMeEverythingChecked.value =
-    ['field', 'view', 'after'].includes(hookRef.event) && ops?.length === operationsEnum.value?.length
+    ['field', 'view', 'after', 'comment'].includes(hookRef.event) && ops?.length === operationsEnum.value?.length
 }
 
 const toggleSendMeEverythingChecked = (_evt: Event) => {
@@ -272,7 +279,7 @@ const handleEventChange = (e: string) => {
   sendMeEverythingChecked.value = false
   hookRef.operation = []
   hookRef.event = e as any
-  if (!['field', 'view', 'after'].includes(e)) {
+  if (!['field', 'view', 'after', 'comment'].includes(e)) {
     hookRef.operation = ['trigger']
     hookRef.trigger_field = false
     hookRef.trigger_fields = []
@@ -287,6 +294,10 @@ const handleEventChange = (e: string) => {
   if (hookRef.event === 'manual') {
     hookRef.active = true
   }
+
+  // Comment source carries its own filter config; initialise it on switch-in
+  // and clear it when switching away so stale filters aren't persisted.
+  hookRef.comment_config = e === 'comment' ? defaultCommentConfig() : undefined
 }
 
 const formInput = ref({
@@ -558,7 +569,7 @@ function setHook(newHook: HookType) {
     },
   })
   if (
-    ['field', 'view', 'after'].includes(toAssign.event) &&
+    ['field', 'view', 'after', 'comment'].includes(toAssign.event) &&
     toAssign.operation &&
     toAssign.operation.length === eventList.value.filter((k) => k.value[0] === toAssign.event).length
   ) {
@@ -568,6 +579,10 @@ function setHook(newHook: HookType) {
   }
 
   hookRef.trigger_field = !!hookRef?.trigger_field
+
+  if (hookRef.event === 'comment' && !hookRef.comment_config) {
+    hookRef.comment_config = defaultCommentConfig()
+  }
 
   oldHookRef.value = deepClone(hookRef)
 
@@ -768,6 +783,7 @@ async function saveHooks() {
     'url',
     'headers',
     'payload',
+    'comment_config',
     'id',
   ] as const
 
@@ -1104,12 +1120,14 @@ const triggerSubType = computed(() => {
 
   const operations = hookRef.operation.map((o) => eventsLabelMap.value[hookRef.event]?.[o]?.text[1])
 
+  const withAfterPrefix = ['after', 'comment'].includes(hookRef.event)
+
   if (operations.length === 1) {
-    return `${hookRef.event === 'after' ? `${t('general.after')} ` : ''}${operations[0]}`
+    return `${withAfterPrefix ? `${t('general.after')} ` : ''}${operations[0]}`
   }
 
   const lastOperation = operations.pop()
-  return `${hookRef.event === 'after' ? `${t('general.after')} ` : ''}${operations.join(', ')} ${t(
+  return `${withAfterPrefix ? `${t('general.after')} ` : ''}${operations.join(', ')} ${t(
     'general.or',
   ).toLowerCase()} ${lastOperation}`
 })
@@ -1377,7 +1395,10 @@ const webhookV2AndV3Diff = computed(() => {
                         <a-select-option v-for="event of eventsEnum" :key="event.value"> {{ event.text }}</a-select-option>
                       </NcSelect>
                     </a-form-item>
-                    <NcDropdown v-if="['field', 'view', 'after'].includes(hookRef.event)" v-model:visible="isDropdownOpen">
+                    <NcDropdown
+                      v-if="['field', 'view', 'after', 'comment'].includes(hookRef.event)"
+                      v-model:visible="isDropdownOpen"
+                    >
                       <div
                         class="rounded-lg border-1 w-full transition-all cursor-pointer flex items-center border-nc-border-gray-medium h-8 py-1 gap-2 px-4 py-2 h-[36px] shadow-default"
                         data-testid="nc-dropdown-hook-operation"
@@ -1407,7 +1428,7 @@ const webhookV2AndV3Diff = computed(() => {
                           data-testid="nc-dropdown-hook-operation-modal"
                           data-testvalue="send_everything"
                         >
-                          <template v-if="['field', 'view', 'after'].includes(hookRef.event)">
+                          <template v-if="['field', 'view', 'after', 'comment'].includes(hookRef.event)">
                             <NcMenuItem
                               data-testid="nc-dropdown-hook-operation-option"
                               data-testvalue="sendMeEverything"
@@ -1430,7 +1451,7 @@ const webhookV2AndV3Diff = computed(() => {
                             @click.prevent="toggleOperation(operation.value)"
                           >
                             <div class="flex-1 w-full text-sm">
-                              <template v-if="['field', 'view', 'after'].includes(hookRef.event)">
+                              <template v-if="['field', 'view', 'after', 'comment'].includes(hookRef.event)">
                                 {{ $t('general.after') }}
                               </template>
                               {{ operation.text }}
@@ -1519,6 +1540,12 @@ const webhookV2AndV3Diff = computed(() => {
                       :table-id="meta.id"
                     />
                   </div>
+
+                  <WebhookCommentFilters
+                    v-if="isEeUI && hookRef.event === 'comment' && hookRef.comment_config"
+                    v-model="hookRef.comment_config"
+                    class="mb-4"
+                  />
                 </div>
 
                 <div class="text-nc-content-gray text-base mt-6 font-bold leading-6">

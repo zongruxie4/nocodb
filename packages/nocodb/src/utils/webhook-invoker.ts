@@ -396,7 +396,10 @@ export class WebhookInvoker {
         return;
       }
 
-      if (hook.condition && !testHook) {
+      // Comment webhooks evaluate their condition against the *parent record*
+      // upstream in CommentHookHandlerService (this `newData` is the comment
+      // payload, not a record row), so skip the record-condition check here.
+      if (hook.condition && !testHook && (hook.event as any) !== 'comment') {
         filters = testFilters || (await hook.getFilters(context));
 
         if (isBulkOperation) {

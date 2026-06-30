@@ -51,17 +51,28 @@ export default class Hook implements HookType {
   version?: 'v1' | 'v2' | 'v3';
   trigger_field?: boolean;
   trigger_fields?: string[];
+  comment_config?: HookType['comment_config'];
   deleted?: BoolType;
 
   constructor(
     hook: Partial<Hook | HookReqType> & {
       version?: string;
       operation?: string | string[];
+      comment_config?: HookType['comment_config'] | string;
     },
   ) {
     Object.assign(this, hook);
     if (hook.version === 'v3' && typeof hook.operation === 'string') {
       this.operation = operationCodeToArr(hook.operation);
+    }
+    // `comment_config` is persisted as serialized JSON (like `notification`);
+    // expose it as a parsed object to consumers.
+    if (typeof hook.comment_config === 'string') {
+      try {
+        this.comment_config = JSON.parse(hook.comment_config);
+      } catch {
+        this.comment_config = null;
+      }
     }
   }
 
@@ -234,10 +245,18 @@ export default class Hook implements HookType {
         'base_id',
         'source_id',
         'trigger_field',
+        'comment_config',
       ]);
 
     if (insertObj.notification && typeof insertObj.notification === 'object') {
       insertObj.notification = JSON.stringify(insertObj.notification);
+    }
+
+    if (
+      insertObj.comment_config &&
+      typeof insertObj.comment_config === 'object'
+    ) {
+      insertObj.comment_config = JSON.stringify(insertObj.comment_config) as any;
     }
 
     // Replay-only: preserve sandbox entity ID for idempotent merge
@@ -327,10 +346,18 @@ export default class Hook implements HookType {
         'version',
         'source_id',
         'trigger_field',
+        'comment_config',
       ]);
 
     if (insertObj.notification && typeof insertObj.notification === 'object') {
       insertObj.notification = JSON.stringify(insertObj.notification);
+    }
+
+    if (
+      insertObj.comment_config &&
+      typeof insertObj.comment_config === 'object'
+    ) {
+      insertObj.comment_config = JSON.stringify(insertObj.comment_config) as any;
     }
 
     // Replay-only: preserve sandbox entity ID for idempotent merge
@@ -413,6 +440,7 @@ export default class Hook implements HookType {
         'active',
         'version',
         'trigger_field',
+        'comment_config',
       ]);
 
     if (
@@ -428,6 +456,15 @@ export default class Hook implements HookType {
 
     if (updateObj.notification && typeof updateObj.notification === 'object') {
       updateObj.notification = JSON.stringify(updateObj.notification);
+    }
+
+    if (
+      updateObj.comment_config &&
+      typeof updateObj.comment_config === 'object'
+    ) {
+      (updateObj as any).comment_config = JSON.stringify(
+        updateObj.comment_config,
+      );
     }
 
     // [DEPRECATED]: should not need to check for v3
