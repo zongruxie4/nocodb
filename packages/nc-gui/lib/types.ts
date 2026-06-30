@@ -152,6 +152,9 @@ interface Row {
     dayIndex?: number
     overLapIteration?: number
     numberOfOverlaps?: number
+    // Calendar week/3-day: this overlapping sliver is packed beyond the readable-width cap,
+    // so it is not drawn (its events are reached via the dense-cluster "View all N" overlay).
+    capHidden?: boolean
     minutes?: number
     recordIndex?: number // For week spanning records in month view
     maxSpanning?: number

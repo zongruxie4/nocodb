@@ -61,6 +61,12 @@ const fieldStyles = computed(() => {
 const CARD_WRAP_LINE_HEIGHT = 18
 const CARD_WRAP_RESERVED = 28
 
+// Airtable-style minimum sliver width: in a dense day column we render at most
+// floor(columnWidth / this) overlapping cards so they stay visible bars instead of
+// degrading to hairlines; the rest are covered by the "View all N events" overlay.
+// ~13px ≈ Airtable (≈8 bars in a 7-column week, ≈15 in the wider 3-day columns).
+const WEEK_MIN_SLIVER_WIDTH = 13
+
 function cardClampLines(record: Row): number {
   const height = Number.parseFloat(`${record.rowMeta?.style?.height ?? ''}`)
   if (Number.isNaN(height)) return 1
@@ -643,6 +649,7 @@ const recordsAcrossAllRange = computed<{
 
       let width = 0
       let left = 100
+      let capHidden = false
 
       const dayWidth = columnWidthPx(dayIndex)
       const majorLeft = columnOffsetPx(dayIndex)
@@ -651,17 +658,22 @@ const recordsAcrossAllRange = computed<{
         record.rowMeta.id === dragRecord.value?.rowMeta.id || record.rowMeta.id === resizeRecord.value?.rowMeta.id
 
       if (!isRecordDraggingOrResizeState) {
-        // Shrink every overlapping record to fit its day column (Airtable-style slivers) —
-        // no 3-column cap, no min-width floor, no "+N more", so nothing is hidden. Records in
-        // the same overlap cluster are equal width; clusters with fewer records get wider
-        // cards. A narrow sliver expands to a readable width on hover (see the template).
+        // Shrink overlapping records to fit the day column (Airtable-style slivers), but never
+        // below a readable min width: render at most floor(availableWidth / WEEK_MIN_SLIVER_WIDTH)
+        // equal columns. Records packed beyond that cap are not drawn (capHidden) — the dense
+        // cluster's "View all N events in day view" overlay (which still counts them) covers them,
+        // so a 40-deep cluster shows ~8-15 bars instead of 40 hairlines.
         const availableWidth = dayWidth - 3
-        width = availableWidth / maxOverlaps
+        const visibleColumns = Math.max(1, Math.min(maxOverlaps, Math.floor(availableWidth / WEEK_MIN_SLIVER_WIDTH)))
+        width = availableWidth / visibleColumns
         left = majorLeft + 1.5 + (overlapIndex - 1) * width
+        if (overlapIndex > visibleColumns) capHidden = true
       } else {
         left = majorLeft + 1.5
         width = dayWidth - 3
       }
+
+      record.rowMeta.capHidden = capHidden
 
       record.rowMeta.style = {
         ...record.rowMeta.style,
@@ -1290,7 +1302,7 @@ watch(
       >
         <template v-for="record in recordsAcrossAllRange.records" :key="record.rowMeta.id">
           <div
-            v-if="record.rowMeta.style?.display !== 'none'"
+            v-if="record.rowMeta.style?.display !== 'none' && !record.rowMeta.capHidden"
             :data-testid="`nc-calendar-week-record-${record.row[displayField!.title!]}`"
             :data-unique-id="record.rowMeta!.id"
             :style="{
