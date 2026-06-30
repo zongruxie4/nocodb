@@ -48,7 +48,9 @@ const {
 } = useCalendarViewStoreOrThrow()
 
 const maxVisibleDays = computed(() => {
-  return activeCalendarView.value === 'week' ? (viewMetaProperties.value?.hide_weekend ? 5 : 7) : 1
+  if (activeCalendarView.value === 'week') return viewMetaProperties.value?.hide_weekend ? 5 : 7
+  if (activeCalendarView.value === '3day') return 3
+  return 1
 })
 
 // This function is used to find the first suitable row for a record
